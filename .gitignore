@@ -15,4 +15,4 @@ dist
 .claude
 .windsurf
 skills-lock.json
-prisma
+apps/server/src/generated/prisma

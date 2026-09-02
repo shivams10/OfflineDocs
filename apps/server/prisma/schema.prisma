@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CollaboratorRole {
+  owner
+  editor
+  viewer
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+
+  ownedDocs         Doc[]               @relation("DocOwner")
+  collaborations    DocCollaborator[]
+  pushSubscriptions PushSubscription[]
+}
+
+model Doc {
+  id        String   @id @default(uuid())
+  title     String
+  snapshot  Bytes?
+  ownerId   String
+  owner     User     @relation("DocOwner", fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  collaborators DocCollaborator[]
+}
+
+model DocCollaborator {
+  docId  String
+  userId String
+  role   CollaboratorRole
+
+  doc  Doc  @relation(fields: [docId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([docId, userId])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
