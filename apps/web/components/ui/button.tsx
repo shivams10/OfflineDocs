@@ -18,9 +18,7 @@ const buttonVariants = cva(
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
       },
-      /* Heights are ours, not shadcn's: 36px default and 42px large. xs and sm
-         keep the original 4px steps below default. Icon sizes stay square and
-         track their text counterpart so a toolbar row lines up. */
+      
       size: {
         default:
           "h-9 gap-1.5 px-3.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
