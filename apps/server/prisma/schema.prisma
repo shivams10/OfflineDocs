@@ -14,14 +14,31 @@ enum CollaboratorRole {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
+  googleId String @unique
+
   email     String   @unique
   name      String?
+  avatarUrl String?
   createdAt DateTime @default(now())
 
-  ownedDocs         Doc[]               @relation("DocOwner")
+  refreshTokens     RefreshToken[]
+  ownedDocs         Doc[]              @relation("DocOwner")
   collaborations    DocCollaborator[]
   pushSubscriptions PushSubscription[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Doc {

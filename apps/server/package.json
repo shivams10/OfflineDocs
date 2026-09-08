@@ -24,11 +24,17 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "7.10.0",
     "@types/express": "^5.0.6",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "pg": "^8.23.0"
+    "jose": "^6.2.12",
+    "pg": "^8.23.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
     "@types/node": "^20.19.43",
     "@types/pg": "^8.23.1",
     "prisma": "7.10.0",

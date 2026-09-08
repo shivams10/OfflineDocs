@@ -1,14 +1,35 @@
 import express from "express";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import { env } from "./config/env.js";
 import { prisma } from "./db/client.js";
+import { authRouter } from "./routes/auth.js";
+import { requireCsrfToken } from "./middleware/csrf.js";
+import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 
 const app = express();
-const port = process.env.PORT ?? 4000;
+
+app.use(
+  cors({
+    origin: env.WEB_ORIGIN,
+    credentials: true,
+  }),
+);
+app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
+
+app.use(requireCsrfToken);
 
 app.get("/health", async (_req, res) => {
   const userCount = await prisma.user.count();
   res.json({ status: "ok", userCount });
 });
 
-app.listen(port, () => {
-  console.log(`server listening on port ${port}`);
+app.use("/auth", authRouter);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+app.listen(env.PORT, () => {
+  console.log(`server listening on port ${env.PORT}`);
 });
