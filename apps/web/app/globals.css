@@ -1,26 +1,308 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+@custom-variant dark (&:is(.dark *));
+
+/* =============================================================================
+   DocSync design system
+
+   Layer 1  PALETTE   raw values, each written once
+   Layer 2  SEMANTIC  roles per theme, named after shadcn (its components
+                      hardcode `bg-primary`, `text-muted-foreground`, …)
+   Layer 3  BRIDGE    exposes tokens as Tailwind utilities
+
+   No hex codes outside this file. Components use Layer 2 names only.
+   ============================================================================= */
+
+/* LAYER 1 — PALETTE. The only hex codes in the project. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* -- Light ---------------------------------------------------------------- */
+  --light-bg: #f6f7f9;
+  --light-surface: #ffffff;
+  --light-surface-2: #fafbfc;
+  --light-surface-3: #f2f4f7;
+  --light-fg: #101319;
+  --light-fg-2: #3d434e;
+  --light-muted: #6c7381; /* 4.9:1 on --surface */
+  --light-border: #e5e8ec;
+  --light-border-strong: #d2d7de;
+  /* Input and checkbox edges need 3:1 (WCAG 1.4.11). --border-strong is 1.45:1
+     — fine for dividers, too faint for a control a user must locate. */
+  --light-border-control: #8996a8; /* 3.01:1 on --surface */
+
+  --light-brand: #3b5bdb;
+  --light-brand-hover: #3350c4;
+  --light-brand-soft: #eef1fd; /* badges, active nav */
+  --light-on-brand: #ffffff; /* 5.9:1 on --light-brand */
+
+  --light-success: #0d7a4f;
+  --light-success-soft: #e7f5ee;
+  --light-warning: #8f6100;
+  --light-warning-soft: #fcf4e4;
+  --light-error: #b42318;
+  --light-error-soft: #fdecea;
+  /* Draft is neutral, not a warning — unsaved is normal, not a problem. */
+  --light-neutral: #9aa1ad;
+
+  /* -- Dark: neutral surfaces, not inverted light values -------------------- */
+  --dark-bg: #0b0d11;
+  --dark-surface: #14171d;
+  --dark-surface-2: #181c23;
+  --dark-surface-3: #1f242c;
+  --dark-fg: #f0f2f6;
+  --dark-fg-2: #c4cad5;
+  --dark-muted: #8b929f; /* 5.1:1 on --dark-surface */
+  --dark-border: #242932;
+  --dark-border-strong: #333a45;
+  --dark-border-control: #596578; /* 3.04:1 on --dark-surface */
+
+  --dark-brand: #8ea6ff;
+  --dark-brand-hover: #a1b5ff;
+  --dark-brand-soft: #1e2750;
+  /* The dark brand is light enough that white text on it is only 2.1:1. Dark
+     ink is 8.3:1 — which is why --primary-foreground flips between themes. */
+  --dark-on-brand: #0b0d11;
+
+  --dark-success: #4ddba0;
+  --dark-success-soft: #102c22;
+  --dark-warning: #f0bb63;
+  --dark-warning-soft: #2e2515;
+  --dark-error: #ff8578;
+  --dark-error-soft: #31191a;
+  --dark-neutral: #717a8b;
+
+  /* -- Elevation: sh-1 resting, sh-2 raised, sh-3 overlay -------------------
+     Dark keeps the same geometry but uses black at higher alpha — a tinted
+     shadow reads as haze on a dark surface rather than as depth. */
+  --light-sh-1: 0 1px 2px rgb(16 19 25 / 0.05);
+  --light-sh-2: 0 4px 12px rgb(16 19 25 / 0.07), 0 1px 3px rgb(16 19 25 / 0.05);
+  --light-sh-3: 0 16px 40px rgb(16 19 25 / 0.14), 0 2px 8px rgb(16 19 25 / 0.06);
+
+  --dark-sh-1: 0 1px 2px rgb(0 0 0 / 0.40);
+  --dark-sh-2: 0 4px 12px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.45);
+  --dark-sh-3: 0 16px 40px rgb(0 0 0 / 0.60), 0 2px 8px rgb(0 0 0 / 0.60);
 }
 
+/* LAYER 2 — SEMANTIC. shadcn's vocabulary.
+   Trap: `muted` is a SURFACE, `muted-foreground` is TEXT. Our grey text value
+   maps to muted-foreground; --surface-2 is what backs `muted`. */
+:root {
+  --background: var(--light-bg);
+  --foreground: var(--light-fg);
+  --card: var(--light-surface);
+  --card-foreground: var(--light-fg);
+  --popover: var(--light-surface);
+  --popover-foreground: var(--light-fg);
+  --primary: var(--light-brand);
+  --primary-foreground: var(--light-on-brand);
+  --secondary: var(--light-surface-2);
+  --secondary-foreground: var(--light-fg);
+  --muted: var(--light-surface-2);
+  --muted-foreground: var(--light-muted);
+  --accent: var(--light-surface-3);
+  --accent-foreground: var(--light-fg);
+  --destructive: var(--light-error);
+  --border: var(--light-border);
+  --input: var(--light-border-control); /* shadcn uses --input for control edges */
+  --ring: var(--light-brand);
+
+  /* shadcn defaults. Replace when something renders a chart — five
+     distinguishable hues is a design decision, not a derivation. */
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+
+  --sidebar: var(--light-surface);
+  --sidebar-foreground: var(--light-fg);
+  --sidebar-primary: var(--light-brand);
+  --sidebar-primary-foreground: var(--light-on-brand);
+  --sidebar-accent: var(--light-surface-3);
+  --sidebar-accent-foreground: var(--light-fg);
+  --sidebar-border: var(--light-border);
+  --sidebar-ring: var(--light-brand);
+
+  /* -- No shadcn equivalent -------------------------------------------------- */
+  --foreground-2: var(--light-fg-2); /* document body */
+  --border-strong: var(--light-border-strong); /* dividers */
+  --primary-hover: var(--light-brand-hover);
+  --primary-soft: var(--light-brand-soft); /* Owner badge, active nav */
+  --success: var(--light-success);
+  --success-soft: var(--light-success-soft);
+  --warning: var(--light-warning);
+  --warning-soft: var(--light-warning-soft);
+  --destructive-soft: var(--light-error-soft);
+  --neutral: var(--light-neutral); /* Draft badge */
+
+  --elevation-1: var(--light-sh-1);
+  --elevation-2: var(--light-sh-2);
+  --elevation-3: var(--light-sh-3);
+
+  /* One knob for the whole radius scale. shadcn's Button uses rounded-lg, so
+     this is the button/input corner; the derived scale below then gives 8.4px
+     for cards (rounded-xl) and 10.8px for modals (rounded-2xl). */
+  --radius: 0.375rem;
+}
+
+.dark {
+  --background: var(--dark-bg);
+  --foreground: var(--dark-fg);
+  --card: var(--dark-surface);
+  --card-foreground: var(--dark-fg);
+  --popover: var(--dark-surface);
+  --popover-foreground: var(--dark-fg);
+  --primary: var(--dark-brand);
+  --primary-foreground: var(--dark-on-brand);
+  --secondary: var(--dark-surface-2);
+  --secondary-foreground: var(--dark-fg);
+  --muted: var(--dark-surface-2);
+  --muted-foreground: var(--dark-muted);
+  --accent: var(--dark-surface-3);
+  --accent-foreground: var(--dark-fg);
+  --destructive: var(--dark-error);
+  --border: var(--dark-border);
+  --input: var(--dark-border-control);
+  --ring: var(--dark-brand);
+
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+
+  --sidebar: var(--dark-surface);
+  --sidebar-foreground: var(--dark-fg);
+  --sidebar-primary: var(--dark-brand);
+  --sidebar-primary-foreground: var(--dark-on-brand);
+  --sidebar-accent: var(--dark-surface-3);
+  --sidebar-accent-foreground: var(--dark-fg);
+  --sidebar-border: var(--dark-border);
+  --sidebar-ring: var(--dark-brand);
+
+  --foreground-2: var(--dark-fg-2);
+  --border-strong: var(--dark-border-strong);
+  --primary-hover: var(--dark-brand-hover);
+  --primary-soft: var(--dark-brand-soft);
+  --success: var(--dark-success);
+  --success-soft: var(--dark-success-soft);
+  --warning: var(--dark-warning);
+  --warning-soft: var(--dark-warning-soft);
+  --destructive-soft: var(--dark-error-soft);
+  --neutral: var(--dark-neutral);
+
+  --elevation-1: var(--dark-sh-1);
+  --elevation-2: var(--dark-sh-2);
+  --elevation-3: var(--dark-sh-3);
+}
+
+/* LAYER 3 — BRIDGE. `inline` is load-bearing: it emits var(--primary) into the
+   utility instead of freezing the light value, so .dark overrides reach it. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --color-foreground-2: var(--foreground-2);
+  --color-border-strong: var(--border-strong);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-neutral: var(--neutral);
+
+  --shadow-sh-1: var(--elevation-1);
+  --shadow-sh-2: var(--elevation-2);
+  --shadow-sh-3: var(--elevation-3);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Type scale. Plain `@theme` — nothing here changes with the theme.
+   `--text-x--<prop>` bundles line-height, weight and tracking into `text-x`,
+   so a size can't be used with the wrong tracking. Comments give the spec as
+   size / weight / tracking. */
+@theme {
+  --text-doc-title: 2rem; /* 32 / 700 / -0.021em */
+  --text-doc-title--line-height: 1.15;
+  --text-doc-title--font-weight: 700;
+  --text-doc-title--letter-spacing: -0.021em;
+
+  --text-page-title: 1.375rem; /* 22 / 600 / -0.02em */
+  --text-page-title--line-height: 1.25;
+  --text-page-title--font-weight: 600;
+  --text-page-title--letter-spacing: -0.02em;
+
+  --text-body: 1.0625rem; /* 17 — document body, pair with text-foreground-2 */
+  --text-body--line-height: 1.78;
+
+  --text-ui: 0.84375rem; /* 13.5 / 500 — buttons, labels, list rows */
+  --text-ui--line-height: 1.4;
+  --text-ui--font-weight: 500;
+
+  /* Named "caption" rather than "secondary": --text-secondary and
+     --color-secondary would both generate the class `text-secondary`. */
+  --text-caption: 0.78125rem; /* 12.5 — timestamps, counts */
+  --text-caption--line-height: 1.45;
+
+  --text-meta: 0.71875rem; /* 11.5 — pair with font-mono */
+  --text-meta--line-height: 1.4;
+
+  --text-label: 0.65625rem; /* 10.5 / 600 / 0.08em, uppercase */
+  --text-label--line-height: 1.2;
+  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.08em;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
