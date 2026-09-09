@@ -88,6 +88,9 @@ export const APP_SHELL_LABELS = {
   settings: "Settings",
   offlineTitle: "Offline ready",
   offlineBody: "Documents you open are kept on this device.",
+  openNavigation: "Open navigation",
+  closeNavigation: "Close navigation",
+  theme: "Theme",
 } as const;
 
 export const DOCUMENTS_PAGE_LABELS = {
