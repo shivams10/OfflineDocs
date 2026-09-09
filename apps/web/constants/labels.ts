@@ -77,9 +77,22 @@ export const SESSION_LABELS = {
   unreachableTitle: "Could not reach the server",
 } as const;
 
-export const DASHBOARD_LABELS = {
-  title: "Signed in",
-  name: "Name",
-  email: "Email",
-  memberSince: "Member since",
+export const APP_SHELL_LABELS = {
+  searchPlaceholder: "Search documents",
+  newDocument: "New document",
+  allDocuments: "All documents",
+  sharedWithMe: "Shared with me",
+  recent: "Recent",
+  account: "Account",
+  profile: "Profile",
+  settings: "Settings",
+  offlineTitle: "Offline ready",
+  offlineBody: "Documents you open are kept on this device.",
+  openNavigation: "Open navigation",
+  closeNavigation: "Close navigation",
+  theme: "Theme",
+} as const;
+
+export const DOCUMENTS_PAGE_LABELS = {
+  title: "All documents",
 } as const;
