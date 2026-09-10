@@ -1,8 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { APP_SHELL_LABELS } from "@/constants/labels";
+import { NewDocumentButton } from "@/components/documents/new-document-button";
 import { useMobileNav } from "@/components/layout/mobile-nav-context";
 
 export function MobileNewDocumentBar() {
@@ -13,10 +11,7 @@ export function MobileNewDocumentBar() {
       className="shrink-0 border-t border-border bg-card px-3.5 py-3 md:hidden"
       inert={isOpen || undefined}
     >
-      <Button className="h-12 w-full">
-        <Plus />
-        {APP_SHELL_LABELS.newDocument}
-      </Button>
+      <NewDocumentButton className="h-12 w-full" />
     </div>
   );
 }

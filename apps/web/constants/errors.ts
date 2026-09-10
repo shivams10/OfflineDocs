@@ -34,3 +34,18 @@ export const API_ERROR_CODES = {
 
 export const NETWORK_ERROR_MESSAGE =
   "Could not reach the server. Check your connection and try again.";
+
+export const DOC_ERROR_MESSAGES: Record<string, string> = {
+  not_found: "This document is no longer available. Try refreshing the list.",
+  forbidden: "You do not have access to do that.",
+  bad_request: "That title isn't valid. Please enter a non-empty title.",
+};
+
+export const FALLBACK_DOC_ERROR = "Something went wrong. Please try again.";
+
+// Takes the code, not the ApiError itself — ApiError lives in lib/api/client.ts,
+// which already imports from this file, so importing it back here would cycle.
+export function docErrorMessage(code: string | undefined): string | null {
+  if (!code) return null;
+  return DOC_ERROR_MESSAGES[code] ?? FALLBACK_DOC_ERROR;
+}

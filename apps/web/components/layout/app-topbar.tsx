@@ -1,11 +1,9 @@
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLockup } from "@/components/brand-lockup";
+import { NewDocumentButton } from "@/components/documents/new-document-button";
 import { DocumentSearch } from "@/components/layout/document-search";
 import { MobileNavToggle } from "@/components/layout/mobile-nav-toggle";
 import { UserAccountBadge } from "@/components/layout/user-account-badge";
-import { APP_SHELL_LABELS } from "@/constants/labels";
 
 export function AppTopbar() {
   return (
@@ -18,10 +16,7 @@ export function AppTopbar() {
 
       <div className="flex-1" />
 
-      <Button className="hidden md:inline-flex">
-        <Plus />
-        {APP_SHELL_LABELS.newDocument}
-      </Button>
+      <NewDocumentButton className="hidden md:inline-flex" />
 
       <div className="hidden md:block">
         <ThemeToggle />
