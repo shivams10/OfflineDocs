@@ -80,6 +80,7 @@ export const SESSION_LABELS = {
 export const APP_SHELL_LABELS = {
   searchPlaceholder: "Search documents",
   newDocument: "New document",
+  creatingDocument: "Creating…",
   allDocuments: "All documents",
   sharedWithMe: "Shared with me",
   recent: "Recent",
@@ -95,4 +96,58 @@ export const APP_SHELL_LABELS = {
 
 export const DOCUMENTS_PAGE_LABELS = {
   title: "All documents",
+  columnName: "Name",
+  columnUpdated: "Last modified",
+  columnAccess: "Access",
+  columnStatus: "Status",
+  errorTitle: "Could not load your documents",
+  retry: "Try again",
+  emptyTitle: "Create your first document",
+  emptyBody:
+    "Write, edit offline, and save when you're ready. Share it with your team as an editor or viewer at any time.",
+} as const;
+
+export const DOCUMENT_ROW_LABELS = {
+  rowActions: "Document actions",
+  viewDetails: "Details",
+  rename: "Rename",
+  renamePlaceholder: "Document title",
+  duplicate: "Duplicate",
+  duplicating: "Duplicating…",
+  delete: "Delete",
+  deleting: "Deleting…",
+  confirmDelete: "Delete this document?",
+  deleteDescription: "Deleting a document removes it for every collaborator. This cannot be undone.",
+  cancel: "Cancel",
+} as const;
+// renameSave / renameCancel and DOC_DRAWER_LABELS.close were part of an
+// earlier iteration (an explicit Save/Cancel pair, a custom "Close" text
+// button) superseded by inline Enter/Escape rename and DialogContent's own
+// close-X — removed rather than left unreferenced.
+
+export const DOC_DRAWER_LABELS = {
+  documentSection: "Document",
+  owner: "Owner",
+  yourRole: "Your role",
+  status: "Status",
+  members: "Members",
+  created: "Created",
+  updated: "Last modified",
+  open: "Open",
+  manageAccess: "Manage access",
+  manageAccessComingSoon: "Sharing isn't built yet — coming in a later phase.",
+} as const;
+
+export const DOC_PAGE_LABELS = {
+  placeholderTitle: "Document",
+  placeholderBody:
+    "The editor for this document isn't built yet — this route exists so navigation has somewhere to land.",
+} as const;
+
+export const SYNC_STATE_LABELS = {
+  draft: "Draft",
+  saving: "Saving…",
+  saved: "Saved",
+  offline: "Offline",
+  error: "Save failed",
 } as const;

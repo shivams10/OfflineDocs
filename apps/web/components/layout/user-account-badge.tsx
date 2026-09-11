@@ -2,8 +2,8 @@
 
 import { useSession } from "@/lib/auth/use-session";
 
-export function initials(name: string | null, email: string) {
-  const source = name?.trim() || email;
+export function initials(name: string | null, fallback: string) {
+  const source = name?.trim() || fallback;
   return source.slice(0, 2).toUpperCase();
 }
 

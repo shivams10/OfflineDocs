@@ -4,6 +4,7 @@ import cors from "cors";
 import { env } from "./config/env.js";
 import { prisma } from "./db/client.js";
 import { authRouter } from "./routes/auth.js";
+import { docsRouter } from "./routes/docs.js";
 import { requireCsrfToken } from "./middleware/csrf.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 
@@ -26,6 +27,7 @@ app.get("/health", async (_req, res) => {
 });
 
 app.use("/auth", authRouter);
+app.use("/docs", docsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
