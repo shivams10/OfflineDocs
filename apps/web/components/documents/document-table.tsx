@@ -14,6 +14,15 @@ import { ApiError } from "@/lib/api/client";
 import { useDocs } from "@/lib/documents/use-documents";
 
 export function DocumentTable() {
+  const {
+    retry,
+    errorTitle,
+    columnUpdated,
+    columnStatus,
+    columnName,
+    columnAccess,
+  } = DOCUMENTS_PAGE_LABELS;
+
   const { data, isPending, isError, error, refetch } = useDocs();
   const [detailsDocId, setDetailsDocId] = useState<string | null>(null);
 
@@ -43,13 +52,13 @@ export function DocumentTable() {
         className="space-y-3 py-16 text-center"
       >
         <p className="text-ui font-medium">
-          {DOCUMENTS_PAGE_LABELS.errorTitle}
+          {errorTitle}
         </p>
         <p className="text-caption text-muted-foreground">
           {message ?? NETWORK_ERROR_MESSAGE}
         </p>
         <Button onClick={() => void refetch()}>
-          {DOCUMENTS_PAGE_LABELS.retry}
+          {retry}
         </Button>
       </div>
     );
@@ -67,16 +76,16 @@ export function DocumentTable() {
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sh-1">
       <div className="hidden h-10 items-center gap-3 border-b border-border bg-muted px-5 md:flex">
         <span className="flex-1 text-label uppercase text-muted-foreground">
-          {DOCUMENTS_PAGE_LABELS.columnName}
+          {columnName}
         </span>
         <span className="w-36 shrink-0 text-label uppercase text-muted-foreground">
-          {DOCUMENTS_PAGE_LABELS.columnUpdated}
+          {columnUpdated}
         </span>
         <span className="w-40 shrink-0 text-label uppercase text-muted-foreground">
-          {DOCUMENTS_PAGE_LABELS.columnAccess}
+          {columnAccess}
         </span>
         <span className="w-24 shrink-0 text-label uppercase text-muted-foreground">
-          {DOCUMENTS_PAGE_LABELS.columnStatus}
+          {columnStatus}
         </span>
         <span className="w-8 shrink-0" />
       </div>

@@ -33,6 +33,15 @@ export function DocumentRow({
   doc: DocSummary;
   onOpenDetails: (id: string) => void;
 }) {
+  const {
+    renamePlaceholder,
+    deleting,
+    deleteDescription,
+    delete: deleteLabel,
+    confirmDelete,
+    cancel,
+  } = DOCUMENT_ROW_LABELS;
+
   const router = useRouter();
   const renameDoc = useRenameDoc();
   const deleteDoc = useDeleteDoc();
@@ -86,7 +95,7 @@ export function DocumentRow({
             <Input
               autoFocus
               value={title}
-              placeholder={DOCUMENT_ROW_LABELS.renamePlaceholder}
+              placeholder={renamePlaceholder}
               disabled={renameDoc.isPending}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={commitRename}
@@ -153,12 +162,12 @@ export function DocumentRow({
       <ConfirmDialog
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
-        title={DOCUMENT_ROW_LABELS.confirmDelete}
-        description={DOCUMENT_ROW_LABELS.deleteDescription}
+        title={confirmDelete}
+        description={deleteDescription}
         error={mutationErrorMessage(deleteDoc.error)}
-        cancelLabel={DOCUMENT_ROW_LABELS.cancel}
-        confirmLabel={DOCUMENT_ROW_LABELS.delete}
-        confirmingLabel={DOCUMENT_ROW_LABELS.deleting}
+        cancelLabel={cancel}
+        confirmLabel={deleteLabel}
+        confirmingLabel={deleting}
         isConfirming={deleteDoc.isPending}
         onConfirm={() => deleteDoc.mutate(doc.id, { onSuccess: () => setConfirmingDelete(false) })}
       />

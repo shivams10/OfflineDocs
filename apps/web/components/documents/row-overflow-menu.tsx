@@ -36,6 +36,13 @@ export function RowOverflowMenu({
   busy?: boolean;
 }) {
   const allowed = ACTIONS_BY_ROLE[role];
+  const {
+    rowActions,
+    viewDetails,
+    rename,
+    duplicate,
+    delete: deleteLabel,
+  } = DOCUMENT_ROW_LABELS;
 
   return (
     <DropdownMenu>
@@ -44,7 +51,7 @@ export function RowOverflowMenu({
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={DOCUMENT_ROW_LABELS.rowActions}
+            aria-label={rowActions}
             disabled={busy}
           />
         }
@@ -54,20 +61,20 @@ export function RowOverflowMenu({
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onOpenDetails}>
           <Info />
-          {DOCUMENT_ROW_LABELS.viewDetails}
+          {viewDetails}
         </DropdownMenuItem>
 
         {allowed.includes("rename") && onRename ? (
           <DropdownMenuItem onClick={onRename}>
             <Pencil />
-            {DOCUMENT_ROW_LABELS.rename}
+            {rename}
           </DropdownMenuItem>
         ) : null}
 
         {allowed.includes("duplicate") && onDuplicate ? (
           <DropdownMenuItem onClick={onDuplicate}>
             <Copy />
-            {DOCUMENT_ROW_LABELS.duplicate}
+            {duplicate}
           </DropdownMenuItem>
         ) : null}
 
@@ -76,7 +83,7 @@ export function RowOverflowMenu({
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={onDelete}>
               <Trash2 />
-              {DOCUMENT_ROW_LABELS.delete}
+              {deleteLabel}
             </DropdownMenuItem>
           </>
         ) : null}

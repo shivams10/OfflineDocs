@@ -33,6 +33,19 @@ export function DocumentDetailsDrawer({
   docId: string | null;
   onClose: () => void;
 }) {
+  const {
+    documentSection,
+    owner: ownerLabel,
+    yourRole,
+    status,
+    created,
+    updated,
+    members,
+    open: openLabel,
+    manageAccess,
+    manageAccessComingSoon,
+  } = DOC_DRAWER_LABELS;
+
   const router = useRouter();
   const { data } = useDocs();
   const doc = data?.find((d) => d.id === docId);
@@ -49,24 +62,24 @@ export function DocumentDetailsDrawer({
           <div className="flex-1 space-y-5 overflow-y-auto">
             <div>
               <p className="text-label uppercase text-muted-foreground">
-                {DOC_DRAWER_LABELS.documentSection}
+                {documentSection}
               </p>
               <div className="mt-2">
                 <div className="flex items-center justify-between border-b border-border py-2">
                   <span className="text-caption text-muted-foreground">
-                    {DOC_DRAWER_LABELS.owner}
+                    {ownerLabel}
                   </span>
                   <span className="text-ui">{owner?.name ?? doc.ownerId}</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-border py-2">
                   <span className="text-caption text-muted-foreground">
-                    {DOC_DRAWER_LABELS.yourRole}
+                    {yourRole}
                   </span>
                   <RoleChip role={doc.role} />
                 </div>
                 <div className="flex items-center justify-between border-b border-border py-2">
                   <span className="text-caption text-muted-foreground">
-                    {DOC_DRAWER_LABELS.status}
+                    {status}
                   </span>
                   {/* Always "saved" for now, same simplification as the row —
                       nothing edits locally until Part 2 exists. */}
@@ -74,13 +87,13 @@ export function DocumentDetailsDrawer({
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-caption text-muted-foreground">
-                    {DOC_DRAWER_LABELS.created}
+                    {created}
                   </span>
                   <span className="text-ui">{relativeTime(doc.createdAt)}</span>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-caption text-muted-foreground">
-                    {DOC_DRAWER_LABELS.updated}
+                    {updated}
                   </span>
                   <span className="text-ui">{relativeTime(doc.updatedAt)}</span>
                 </div>
@@ -89,7 +102,7 @@ export function DocumentDetailsDrawer({
 
             <div>
               <p className="text-label uppercase text-muted-foreground">
-                {DOC_DRAWER_LABELS.members} · {doc.collaborators.length}
+                {members} · {doc.collaborators.length}
               </p>
               <ul className="mt-2 space-y-2">
                 {doc.collaborators.map((collaborator) => {
@@ -119,16 +132,16 @@ export function DocumentDetailsDrawer({
                 <Button className="flex-1" onClick={() => router.push(ROUTES.doc(doc.id))} />
               }
             >
-              {DOC_DRAWER_LABELS.open}
+              {openLabel}
             </DialogClose>
             {doc.role === "owner" ? (
               <Button
                 variant="outline"
                 className="flex-1"
                 disabled
-                title={DOC_DRAWER_LABELS.manageAccessComingSoon}
+                title={manageAccessComingSoon}
               >
-                {DOC_DRAWER_LABELS.manageAccess}
+                {manageAccess}
               </Button>
             ) : null}
           </DialogFooter>
