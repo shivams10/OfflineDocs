@@ -411,17 +411,13 @@ reporting:
 budget:
   max_tokens_per_run: 25_000_000
   max_minutes_per_run: 45
-  # How many agents may run at once. Agents are safe to parallelise because the
-  # partitioner assigns each one its own TEST file to write — they only read the
-  # source they cover. Raised 3 -> 6 after a run where two waves cost ~7 minutes
-  # of wall clock waiting for a collision that could not happen.
-  max_parallel_agents: 6
+  # How many agents may run at once. Three parallel implementers collided on a
+  # shared source file in the run above; partitioning by file is what makes
+  # parallelism safe, and this is the ceiling on it.
+  max_parallel_agents: 3
   # The two that actually bound cost, because growth is quadratic per agent.
   max_turns_per_agent: 30
-  # 4, not 5: at ~4 turns a scenario plus 6 overhead that is ~22 turns, well
-  # clear of the ceiling. Three agents were killed at exactly 40 turns on the
-  # last run, and a mid-task kill costs a whole agent.
-  max_scenarios_per_agent: 4
+  max_scenarios_per_agent: 5
   # The orchestrator is the one agent that cannot be split, and it was 23% of a
   # real run's cost across 106 turns — most of them navigation, artifact edits
   # and un-batched ledger writes. This is the budget it should keep to.
