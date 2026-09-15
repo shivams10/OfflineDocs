@@ -173,6 +173,30 @@ export const EDITOR_LABELS = {
   loadErrorTitle: "Couldn't load this document",
 } as const;
 
+export const PRESENCE_LABELS = {
+  someone: "Someone",
+  hasThisOpen: "has this open",
+  haveThisOpen: "have this open",
+  accessRevokedTitle: "You no longer have access to this document.",
+  accessRevokedHint:
+    "Your unsaved changes are still on this device. Copy them out before you leave.",
+  copyText: "Copy text",
+  copied: "Copied",
+} as const;
+
+export const PUSH_LABELS = {
+  enable: "Enable notifications",
+  disable: "Turn off notifications",
+  enabling: "Enabling…",
+  blocked: "Notifications are blocked in your browser settings.",
+  unsupported: "This browser can't show notifications.",
+  failed: "Couldn't enable notifications. Try again.",
+  /** Shown in-app instead of an OS notification when the doc is already open. */
+  savedSuffix: "updated this document.",
+  reload: "Reload",
+  dismiss: "Dismiss",
+} as const;
+
 export const SYNC_STATE_LABELS = {
   draft: "Draft",
   saving: "Saving…",

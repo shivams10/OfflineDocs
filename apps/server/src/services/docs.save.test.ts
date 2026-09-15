@@ -61,7 +61,7 @@ describe("saveDoc — merges into the stored snapshot and advances updatedAt", (
 
     const result = await saveDoc(docId, encode(Y.encodeStateAsUpdate(client)));
 
-    expect(result.updatedAt.getTime()).toBeGreaterThan(preUpdatedAt.getTime());
+    expect(result.doc.updatedAt.getTime()).toBeGreaterThan(preUpdatedAt.getTime());
 
     const afterFirstSave = await getDocById(docId);
     expect(textFromSnapshot(afterFirstSave!.snapshot!)).toBe("hello");
@@ -74,7 +74,7 @@ describe("saveDoc — merges into the stored snapshot and advances updatedAt", (
     const delta = Y.encodeStateAsUpdate(client, vectorAfterHello);
 
     const secondResult = await saveDoc(docId, encode(delta));
-    expect(secondResult.updatedAt.getTime()).toBeGreaterThanOrEqual(
+    expect(secondResult.doc.updatedAt.getTime()).toBeGreaterThanOrEqual(
       afterFirstSave!.updatedAt.getTime(),
     );
 

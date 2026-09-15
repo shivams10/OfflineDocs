@@ -23,4 +23,9 @@ export const API = {
   docCollaborator: (docId: string, userId: string) =>
     `/docs/${docId}/collaborators/${userId}`,
   docSave: (id: string) => `/docs/${id}/save`,
+  /** POST = heartbeat (presence + draft backup); GET = read your own backup. */
+  docDraft: (id: string) => `/docs/${id}/draft`,
+  docPresence: (id: string) => `/docs/${id}/presence`,
+  pushVapidKey: "/push/vapid-public-key",
+  pushSubscribe: "/push/subscribe",
 } as const;

@@ -6,6 +6,7 @@ import type { DocSummary } from "@docsync/shared";
 import { DOCUMENT_ROW_LABELS, SYNC_STATE_LABELS } from "@/constants/labels";
 import { DocumentTable } from "@/components/documents/document-table";
 import { DOCS_QUERY_KEY } from "@/lib/documents/use-documents";
+import { fetchDocs } from "@/lib/api/documents";
 import { markDocDirty } from "@/lib/documents/dirty-docs";
 
 // document-row.tsx and document-details-drawer.tsx both call useRouter() —
@@ -16,14 +17,19 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-// fetchDocs is mocked purely so DocumentTable's background queryFn has
-// somewhere to land — the assertions below read exclusively from the
-// pre-seeded query cache (renderTable), never from this resolved value.
+// fetchDocs is mocked so DocumentTable's background queryFn has somewhere to
+// land. It must resolve with the SAME docs the cache was seeded with, not [].
+//
+// It used to resolve []: the seeded cache is stale on mount, react-query
+// refetches immediately, and the empty result replaced the seed. Synchronous
+// tests asserted before that landed and passed; the one async test in this file
+// awaited a click and rendered against an empty table, failing with "Unable to
+// find role=menuitem" because there were no rows to open a menu on.
 vi.mock("@/lib/api/documents", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/documents")>();
   return {
     ...actual,
-    fetchDocs: vi.fn().mockResolvedValue([]),
+    fetchDocs: vi.fn(),
   };
 });
 
@@ -40,8 +46,11 @@ function makeDoc(overrides: Partial<DocSummary> & { id: string; title: string })
 
 function renderTable(docs: DocSummary[]) {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    // staleTime keeps the seeded data authoritative for the life of the test —
+    // without it the background refetch races every assertion.
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
+  vi.mocked(fetchDocs).mockResolvedValue(docs);
   queryClient.setQueryData(DOCS_QUERY_KEY, docs);
 
   return render(

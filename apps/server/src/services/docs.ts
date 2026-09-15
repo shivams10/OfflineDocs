@@ -104,10 +104,38 @@ export async function deleteDoc(docId: string): Promise<void> {
   await prisma.doc.delete({ where: { id: docId } });
 }
 
+/** Must match the client's `BODY_FIELD` (web: lib/documents/use-yjs-doc.ts). */
+const BODY_FIELD = "body";
+
+function countLines(text: string): number {
+  return text.length === 0 ? 0 : text.split("\n").length;
+}
+
+/**
+ * Human wording for a push notification, derived from the merge that just happened
+ * rather than from anything the client claimed — techspec 4 has no live awareness
+ * state to attribute from, so the diff in line count is the honest signal available.
+ */
+export function describeChange(before: string, after: string): string {
+  const delta = countLines(after) - countLines(before);
+  if (delta > 0) return `added ${delta} ${delta === 1 ? "line" : "lines"}`;
+  if (delta < 0) {
+    const removed = -delta;
+    return `removed ${removed} ${removed === 1 ? "line" : "lines"}`;
+  }
+  return "edited this document";
+}
+
+export interface SaveResult {
+  doc: DocSummaryRecord;
+  /** Phrase for the push copy, e.g. "added 3 lines". Never surfaced to the saver. */
+  changeSummary: string;
+}
+
 // Merges an incoming Yjs update (base64, from encodeUpdate() client-side) into the
 // doc's stored snapshot. Y.applyUpdate() is what actually validates the payload is a
 // real Yjs update — the request-body validator only checks it's a non-empty string.
-export async function saveDoc(docId: string, update: string): Promise<DocSummaryRecord> {
+export async function saveDoc(docId: string, update: string): Promise<SaveResult> {
   const existing = await prisma.doc.findUnique({
     where: { id: docId },
     select: { snapshot: true },
@@ -117,6 +145,10 @@ export async function saveDoc(docId: string, update: string): Promise<DocSummary
   const ydoc = new Y.Doc();
   if (existing.snapshot) Y.applyUpdate(ydoc, existing.snapshot);
 
+  // Captured before the merge: the same Y.Doc is mutated in place, so reading this
+  // afterwards would compare the result against itself.
+  const before = ydoc.getText(BODY_FIELD).toString();
+
   try {
     Y.applyUpdate(ydoc, Buffer.from(update, "base64"));
   } catch {
@@ -124,11 +156,16 @@ export async function saveDoc(docId: string, update: string): Promise<DocSummary
   }
 
   const snapshot = Buffer.from(Y.encodeStateAsUpdate(ydoc));
-  return prisma.doc.update({
+  const doc = await prisma.doc.update({
     where: { id: docId },
     data: { snapshot },
     select: DOC_SUMMARY_FIELDS,
   });
+
+  return {
+    doc,
+    changeSummary: describeChange(before, ydoc.getText(BODY_FIELD).toString()),
+  };
 }
 
 

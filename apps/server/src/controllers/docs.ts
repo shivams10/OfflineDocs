@@ -24,6 +24,8 @@ import {
   type DocDetailRecord,
   type DocSummaryRecord,
 } from "../services/docs.js";
+import { clearOwnDraft } from "../services/presence.js";
+import { queueDocSavedNotification } from "../services/push.js";
 
 function toDocSummary(
   doc: DocSummaryRecord,
@@ -102,8 +104,27 @@ export async function remove(req: Request, res: Response): Promise<void> {
 
 export async function save(req: Request, res: Response<DocResponse>): Promise<void> {
   const { docId, role } = getDocAccess(req);
+  const { id: userId, email } = getAuthenticatedUser(req);
   const { update } = req.body as unknown as SaveRequest;
-  const doc = await saveDoc(docId, update);
+
+  const { doc, changeSummary } = await saveDoc(docId, update);
+
+  // The content is canonical now, so the private backup has nothing left to
+  // recover — and a stale copy of text the user has since edited away is a
+  // liability rather than a safety net (techspec 4.1).
+  await clearOwnDraft(docId, userId);
+
+  // After the response is committed to, not before: a notification must never be
+  // the reason a save fails, and the merge is already durable at this point.
+  queueDocSavedNotification({
+    docId,
+    docTitle: doc.title,
+    editorId: userId,
+    editorName:
+      doc.collaborators.find((row) => row.user.id === userId)?.user.name ?? email,
+    changeSummary,
+  });
+
   res.json({ doc: toDocSummary(doc, role) });
 }
 

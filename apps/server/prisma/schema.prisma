@@ -23,6 +23,9 @@ model User {
   createdAt DateTime @default(now())
 
   refreshTokens     RefreshToken[]
+  sentInvites       DocInvite[]        @relation("DocInviteSender")
+  drafts            DocDraft[]
+  presence          DocPresence[]
   ownedDocs         Doc[]              @relation("DocOwner")
   collaborations    DocCollaborator[]
   pushSubscriptions PushSubscription[]
@@ -51,6 +54,9 @@ model Doc {
   updatedAt DateTime @updatedAt
 
   collaborators DocCollaborator[]
+  invites       DocInvite[]
+  drafts        DocDraft[]
+  presence      DocPresence[]
 }
 
 model DocCollaborator {
@@ -74,4 +80,61 @@ model PushSubscription {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+}
+
+/// An invite to an email address with no User behind it yet. Orphaned as of this
+/// branch: the merged sharing feature rejects unknown emails outright, so nothing
+/// reads or writes this table. Kept because the database already has it -- see the
+/// pending-invite flow in the master spec for what it is meant to carry.
+model DocInvite {
+  id          String           @id @default(uuid())
+  docId       String
+  /// Always stored lowercased/trimmed, matching User.email, so the claim
+  /// lookup at sign-in is an exact match rather than a case-insensitive scan.
+  email       String
+  role        CollaboratorRole
+  invitedById String
+  createdAt   DateTime         @default(now())
+
+  doc       Doc  @relation(fields: [docId], references: [id], onDelete: Cascade)
+  invitedBy User @relation("DocInviteSender", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([docId, email])
+  @@index([email])
+}
+
+/// A private, per-user backup of an unsaved draft. Deliberately NOT the canonical
+/// document: it never merges into Doc.snapshot, never notifies anyone, and is only
+/// ever readable by the user who wrote it. It exists so a draft survives cleared
+/// local storage or a device the user never returns to.
+model DocDraft {
+  docId  String
+  userId String
+  /// A Yjs update encoding the author's whole local state, not a delta -- so a
+  /// restore needs this row alone, with no replay of earlier backups.
+  update Bytes
+
+  updatedAt DateTime @updatedAt
+
+  doc  Doc  @relation(fields: [docId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([docId, userId])
+  @@index([userId])
+}
+
+/// "Who has this document open right now." Written by the same heartbeat that backs
+/// up the draft, and read back with a TTL -- a row is only presence while it keeps
+/// being refreshed. There is no "leaving" signal, which is what makes this survive a
+/// crashed tab, a killed browser or a dropped connection without leaving ghosts.
+model DocPresence {
+  docId      String
+  userId     String
+  lastSeenAt DateTime @updatedAt
+
+  doc  Doc  @relation(fields: [docId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([docId, userId])
+  @@index([docId, lastSeenAt])
 }

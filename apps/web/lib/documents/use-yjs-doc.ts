@@ -22,6 +22,12 @@ export interface YjsDoc {
    *  Commits the state captured by the encodeUpdate() that produced the sent payload, so
    *  anything typed while the request was in flight stays outstanding (and still dirty). */
   markSaved: () => void;
+  /** The whole local document, with no delta bookkeeping and no side effects — for the
+   *  private draft backup, which must stand alone rather than replay against a base the
+   *  server may not have. Deliberately separate from encodeUpdate(): that one records the
+   *  state its payload covers, so calling it here would make the *next* real save a delta
+   *  against something the server never received. */
+  encodeFullState: () => string;
 }
 
 const HIGH_SURROGATE_START = 0xd800;
@@ -165,5 +171,9 @@ export function useYjsDoc(docId: string, snapshot: string | null): YjsDoc {
     if (!stillDirty) markDocClean(docId);
   }
 
-  return { body, setBody, isDirty, encodeUpdate, markSaved };
+  function encodeFullState(): string {
+    return bytesToBase64(Y.encodeStateAsUpdate(ydoc));
+  }
+
+  return { body, setBody, isDirty, encodeUpdate, markSaved, encodeFullState };
 }

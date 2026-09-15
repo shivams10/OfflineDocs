@@ -5,9 +5,13 @@ import type { DocDetail } from "@docsync/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SyncBadge } from "@/components/documents/sync-badge";
-import { EDITOR_LABELS } from "@/constants/labels";
+import { PresenceChips } from "@/components/documents/presence-chips";
+import { DocSavedNotice } from "@/components/documents/doc-saved-notice";
+import { EDITOR_LABELS, PRESENCE_LABELS } from "@/constants/labels";
 import { useDoc, useRenameDoc, useSaveDoc } from "@/lib/documents/use-documents";
 import { useYjsDoc } from "@/lib/documents/use-yjs-doc";
+import { useDraftBackup, usePresence } from "@/lib/documents/use-presence";
+import { useSession } from "@/lib/auth/use-session";
 import type { SyncState } from "@/lib/documents/sync-state";
 
 function subscribeToConnectivity(callback: () => void) {
@@ -55,12 +59,69 @@ export function DocEditor({ id }: { id: string }) {
   return <DocEditorLoaded key={doc.id} doc={doc} />;
 }
 
+/**
+ * Shown when the heartbeat proves the caller's access is gone — the document was
+ * deleted, or they were removed from it.
+ *
+ * The local draft is deliberately left intact and the text is offered for copying
+ * rather than discarded. Someone else revoking a permission must not silently
+ * destroy work this person has not saved; that is precisely the trust failure the
+ * offline-first model exists to prevent.
+ */
+function AccessRevokedBanner({ body }: { body: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div
+      role="alert"
+      className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-destructive/20 bg-destructive-soft px-4 py-2 text-caption text-destructive sm:px-8"
+    >
+      <span className="font-medium">{PRESENCE_LABELS.accessRevokedTitle}</span>
+      <span className="min-w-0 flex-1">{PRESENCE_LABELS.accessRevokedHint}</span>
+      <button
+        type="button"
+        className="underline"
+        onClick={() => {
+          void navigator.clipboard?.writeText(body).then(
+            () => setCopied(true),
+            () => undefined,
+          );
+        }}
+      >
+        {copied ? PRESENCE_LABELS.copied : PRESENCE_LABELS.copyText}
+      </button>
+    </div>
+  );
+}
+
 function DocEditorLoaded({ doc }: { doc: DocDetail }) {
   const isViewer = doc.role === "viewer";
   const online = useOnlineStatus();
-  const { body, setBody, isDirty, encodeUpdate, markSaved } = useYjsDoc(doc.id, doc.snapshot);
+  const { body, setBody, isDirty, encodeUpdate, markSaved, encodeFullState } = useYjsDoc(
+    doc.id,
+    doc.snapshot,
+  );
   const saveDoc = useSaveDoc(doc.id);
   const renameDoc = useRenameDoc();
+  const { data: me } = useSession();
+
+  // Presence and the draft backup are one request on the wire (techspec 4.1/7),
+  // but two hooks here: one writes on a timer, the other reads on a timer, and
+  // only the write half has anything to say when access disappears.
+  const { accessRevoked } = useDraftBackup(doc.id, {
+    // No point heartbeating into a void — offline, the request cannot land, and a
+    // failed beat must not be mistaken for revoked access.
+    enabled: online,
+    isDirty,
+    canBackUp: !isViewer,
+    encodeFullState,
+  });
+
+  const { data: present } = usePresence(doc.id, online && !accessRevoked);
+
+  // The list is a plain fact about the document, so the caller is filtered here
+  // rather than server-side — "who else" is a question only this screen asks.
+  const others = (present ?? []).filter((person) => person.userId !== me?.id);
 
   const [title, setTitle] = useState(doc.title);
 
@@ -147,6 +208,8 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
           className="min-w-0 flex-1 truncate bg-transparent text-page-title outline-none disabled:opacity-100"
         />
 
+        <PresenceChips people={others} />
+
         <SyncBadge state={syncState} />
 
         {isViewer ? (
@@ -159,6 +222,10 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
           </Button>
         )}
       </div>
+
+      <DocSavedNotice docId={doc.id} />
+
+      {accessRevoked ? <AccessRevokedBanner body={body} /> : null}
 
       {!isViewer && !online ? (
         <p className="shrink-0 border-b border-warning/25 bg-warning-soft px-4 py-2 text-caption text-warning sm:px-8">

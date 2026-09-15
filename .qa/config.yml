@@ -44,10 +44,7 @@ requirements:
   # written for QA ("Status: Ready for QA") and states expected behaviour rather
   # than implementation — prefer it over the tech spec whenever they overlap.
   primary_docs:
-    - "docs/phase1-part2-prd.md"   # editor behaviour + §7 explicit out-of-scope list
-    - "docs/DocSync-PRD.md"        # product-level functional requirements
-    - "docs/techspec.md"           # architecture, §9 offline/conflict edge cases
-    - "docs/phase1-techspec.md"
+    - "docs/docsync-master-spec.md"   # editor behaviour + §7 explicit out-of-scope list
   tracker:
     kind: github        # remote: github.com/shivams10/OfflineDocs
     # No ticket-key pattern (ABC-123) in any of the 20 commits; history uses
@@ -324,6 +321,7 @@ run:
   #   auto      scored from the diff — critical-path match, migrations, churn,
   #             and historical defect density for the touched files.
   tier: auto
+  min_priority: P2
   max_scenarios:
     quick: 0
     standard: 20
@@ -345,7 +343,15 @@ run:
   # `related` costs seconds rather than tokens. `new` is the right choice when
   # you are running the suite yourself anyway, or in CI, and want the plugin to
   # confirm only its own work.
-  test_selection: new
+  execution: auto
+  test_commands:
+    # `dir` is where the command runs from. pnpm --filter changes the working
+    # directory, so paths must be relative to it — without this, vitest silently
+    # ran 7 of the 12 files it was given.
+    web:    { command: "pnpm exec vitest run", dir: "apps/web" }
+    server: { command: "pnpm exec vitest run", dir: "apps/server" }
+
+  test_selection: related
 
 
 

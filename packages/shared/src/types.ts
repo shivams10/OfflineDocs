@@ -102,3 +102,55 @@ export interface PushPayload {
   editorName: string;
   changeSummary: string;
 }
+
+/* ---------------------------------------------------------------- presence */
+
+/** Someone currently holding the document open. Role travels with it so the UI
+ *  can distinguish a viewer looking on from an editor who may be about to save. */
+export interface PresenceUser {
+  userId: string;
+  name: string | null;
+  avatarUrl: string | null;
+  role: CollaboratorRole;
+}
+
+export interface PresenceResponse {
+  /** Everyone present, the caller included — the caller is filtered client-side
+   *  so the list stays a plain fact about the document rather than a per-caller view. */
+  present: PresenceUser[];
+}
+
+/** One heartbeat: refreshes presence and, for editors, backs the draft up.
+ *  `update` is a base64 Yjs update of the author's whole local state. Omitted by
+ *  viewers, who have presence but no draft. */
+export interface DraftBackupRequest {
+  update?: string;
+}
+
+export interface DraftBackupResponse {
+  /** Server clock, so a client can age its own backup without trusting the device clock. */
+  backedUpAt: string | null;
+}
+
+export interface DraftResponse {
+  draft: {
+    update: string;
+    backedUpAt: string;
+  } | null;
+}
+
+/* -------------------------------------------------------------------- push */
+
+/** The browser's PushSubscription, narrowed to what the server stores. */
+export interface PushSubscriptionRequest {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
+export interface VapidKeyResponse {
+  /** null when the server has no VAPID keys configured — push is then off, not broken. */
+  publicKey: string | null;
+}

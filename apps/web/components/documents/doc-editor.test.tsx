@@ -145,7 +145,8 @@ describe("DocEditor — save lifecycle", () => {
     const user = userEvent.setup();
     vi.mocked(saveDoc).mockResolvedValue(summaryFor({ id: "x", title: "x" }));
 
-    const doc = makeDoc({ snapshot: makeSnapshot("existing") });
+    const snapshot = makeSnapshot("existing");
+    const doc = makeDoc({ snapshot });
     renderDocEditor(doc);
 
     const body = screen.getByPlaceholderText(EDITOR_LABELS.bodyPlaceholder);
@@ -172,7 +173,9 @@ describe("DocEditor — save lifecycle", () => {
     await user.click(saveButton);
 
     expect(saveDoc).toHaveBeenCalledTimes(1);
-    expect(decodeBodyFromUpdate(vi.mocked(saveDoc).mock.calls[0][1])).toBe("existingab");
+    // Decoded against the snapshot the server already holds: encodeUpdate sends
+    // a delta, so the server's view is snapshot + delta, not the delta alone.
+    expect(decodeBodyFromUpdate(vi.mocked(saveDoc).mock.calls[0][1], snapshot)).toBe("existingab");
   });
 });
 
