@@ -343,7 +343,7 @@ run:
   # `related` costs seconds rather than tokens. `new` is the right choice when
   # you are running the suite yourself anyway, or in CI, and want the plugin to
   # confirm only its own work.
-  execution: auto
+  execution: manual
   test_commands:
     # `dir` is where the command runs from. pnpm --filter changes the working
     # directory, so paths must be relative to it — without this, vitest silently
