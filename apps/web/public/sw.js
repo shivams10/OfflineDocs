@@ -109,13 +109,24 @@ function isStaticAsset(url) {
   );
 }
 
+/* Auth is never cached: a stale session response is a security bug, and the
+   callback is a one-shot redirect whose URL differs per returnTo, so caching it
+   only grows the cache. The API itself is a separate origin this worker never
+   touches — this covers the routes served from our own. */
+function isAuthRoute(url) {
+  return url.origin === self.location.origin && url.pathname.startsWith("/auth/");
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
   // Only GETs are cacheable, and nothing else is ours to interfere with.
   if (request.method !== "GET") return;
 
-  if (isStaticAsset(new URL(request.url))) {
+  const url = new URL(request.url);
+  if (isAuthRoute(url)) return;
+
+  if (isStaticAsset(url)) {
     event.respondWith(cacheFirst(request, STATIC_CACHE));
     return;
   }
