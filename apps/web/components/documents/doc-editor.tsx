@@ -5,10 +5,15 @@ import type { DocDetail } from "@docsync/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SyncBadge } from "@/components/documents/sync-badge";
-import { EDITOR_LABELS } from "@/constants/labels";
+import { EDITOR_LABELS, QUEUE_LABELS } from "@/constants/labels";
+import { ApiError, csrfToken } from "@/lib/api/client";
 import { useDoc, useRenameDoc, useSaveDoc } from "@/lib/documents/use-documents";
 import { useYjsDoc } from "@/lib/documents/use-yjs-doc";
 import type { SyncState } from "@/lib/documents/sync-state";
+import { requestQueueFlush } from "@/lib/offline/request-flush";
+import { enqueueSave } from "@/lib/offline/save-queue";
+import { useDocQueueState } from "@/lib/offline/use-save-queue";
+import { RejectedSaveNotice } from "@/components/documents/rejected-save-notice";
 
 function subscribeToConnectivity(callback: () => void) {
   window.addEventListener("online", callback);
@@ -63,6 +68,8 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
   const renameDoc = useRenameDoc();
 
   const [title, setTitle] = useState(doc.title);
+  const [queueFailed, setQueueFailed] = useState(false);
+  const { pending: pendingCount, rejected: rejectedCount } = useDocQueueState(doc.id);
 
   // Escape reverts and blurs, but `setTitle` is async while `blur()` fires
   // `onBlur` synchronously — so `commitTitle` would still close over the
@@ -83,9 +90,43 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
     renameDoc.mutate({ id: doc.id, title: trimmed });
   }
 
+  /* Offline, Save queues rather than refusing (Phase 2 supersedes Part 1's
+     disabled button). markSaved() only on a durable enqueue: the queued entry is
+     what the next delta is measured from, so losing it would lose the edit. */
+  async function queueSave(update: string) {
+    const result = await enqueueSave({ docId: doc.id, update, csrf: csrfToken() });
+
+    setQueueFailed(!result.ok);
+    if (!result.ok) return;
+
+    markSaved();
+    // Clears a failed attempt that this enqueue has now taken responsibility for,
+    // so the badge reads Pending rather than staying on Save failed.
+    saveDoc.reset();
+
+    /* Registers the Background Sync now rather than on reconnect: it is what
+       sends this change if the tab is closed before the network returns. */
+    void requestQueueFlush();
+  }
+
   function handleSave() {
-    if (isViewer || !online || !isDirty || saveDoc.isPending) return;
-    saveDoc.mutate(encodeUpdate(), { onSuccess: () => markSaved() });
+    if (isViewer || !isDirty || saveDoc.isPending) return;
+
+    const update = encodeUpdate();
+    if (!online) {
+      void queueSave(update);
+      return;
+    }
+
+    saveDoc.mutate(update, {
+      onSuccess: () => markSaved(),
+      /* navigator.onLine reports true on a dead network, so reachability is only
+         really known once a request has failed. Anything the server answered is
+         a real error and stays one; a transport failure is queued instead. */
+      onError: (error) => {
+        if (!(error instanceof ApiError)) void queueSave(update);
+      },
+    });
   }
 
   // A ref, not a `[handleSave]` dependency: `handleSave` closes over state
@@ -109,20 +150,26 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // A prior failure outranks being offline: "Save failed" is the more
-  // actionable of the two, and losing it on a disconnect would hide that the
-  // last attempt did not land.
+  /* A prior failure outranks being offline: "Save failed" is the more actionable
+     of the two, and losing it on a disconnect would hide that the last attempt
+     did not land. Queued work outranks "Offline" for the same reason — it says
+     the change is held safely, not merely that the network is gone. */
   const syncState: SyncState = saveDoc.isPending
     ? "saving"
-    : saveDoc.isError
+    : // Refused work is unsaved work: "Saved" here would be untrue.
+      saveDoc.isError || rejectedCount > 0
       ? "error"
-      : !online
-        ? "offline"
-        : isDirty
-          ? "draft"
-          : "saved";
+      : pendingCount > 0
+        ? online
+          ? "reconnecting"
+          : "pending"
+        : !online
+          ? "offline"
+          : isDirty
+            ? "draft"
+            : "saved";
 
-  const canSave = !isViewer && online && isDirty && !saveDoc.isPending;
+  const canSave = !isViewer && isDirty && !saveDoc.isPending;
 
   return (
     <div className="flex h-full flex-col">
@@ -149,6 +196,12 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
 
         <SyncBadge state={syncState} />
 
+        {pendingCount > 0 ? (
+          <span className="text-caption text-muted-foreground max-sm:hidden">
+            {pendingCount === 1 ? QUEUE_LABELS.pendingOne : QUEUE_LABELS.pendingMany(pendingCount)}
+          </span>
+        ) : null}
+
         {isViewer ? (
           <Badge variant="neutral" size="md">
             {EDITOR_LABELS.viewOnly}
@@ -163,6 +216,17 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
       {!isViewer && !online ? (
         <p className="shrink-0 border-b border-warning/25 bg-warning-soft px-4 py-2 text-caption text-warning sm:px-8">
           {EDITOR_LABELS.offlineHint}
+        </p>
+      ) : null}
+
+      {rejectedCount > 0 ? <RejectedSaveNotice docId={doc.id} body={body} /> : null}
+
+      {queueFailed ? (
+        <p
+          role="alert"
+          className="shrink-0 border-b border-destructive/20 bg-destructive-soft px-4 py-2 text-caption text-destructive sm:px-8"
+        >
+          {QUEUE_LABELS.queueFailed}
         </p>
       ) : null}
 
