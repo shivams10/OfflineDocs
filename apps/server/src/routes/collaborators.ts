@@ -12,9 +12,12 @@ export const collaboratorsRouter = Router({ mergeParams: true });
 
 collaboratorsRouter.use(requireAuth);
 
+// Editor+, not viewer+: the role matrix (master spec §2) gives viewers no sight of the
+// member list or anyone's role. Emails are narrowed again inside the controller, to owners
+// only — role decides whether you see the list at all, and then how much of each row.
 collaboratorsRouter.get(
   "/",
-  requireRole("viewer"),
+  requireRole("editor"),
   collaboratorsController.list,
 );
 

@@ -102,9 +102,15 @@ export async function remove(req: Request, res: Response): Promise<void> {
   res.status(204).send();
 }
 
+/**
+ * Push copy for a saver whose Google profile has no display name. Never their email:
+ * the notification goes to every collaborator, and only owners may see addresses.
+ */
+const UNNAMED_EDITOR = "A collaborator";
+
 export async function save(req: Request, res: Response<DocResponse>): Promise<void> {
   const { docId, role } = getDocAccess(req);
-  const { id: userId, email } = getAuthenticatedUser(req);
+  const { id: userId } = getAuthenticatedUser(req);
   const { update } = req.body as unknown as SaveRequest;
 
   const { doc, changeSummary } = await saveDoc(docId, update);
@@ -121,7 +127,8 @@ export async function save(req: Request, res: Response<DocResponse>): Promise<vo
     docTitle: doc.title,
     editorId: userId,
     editorName:
-      doc.collaborators.find((row) => row.user.id === userId)?.user.name ?? email,
+      doc.collaborators.find((row) => row.user.id === userId)?.user.name ??
+      UNNAMED_EDITOR,
     changeSummary,
   });
 

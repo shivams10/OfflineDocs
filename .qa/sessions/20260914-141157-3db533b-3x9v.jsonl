@@ -1,9 +1,0 @@
-{"ts":"2026-09-14T14:11:57.440Z","agent":"orchestrator","event":"run.started","inputs":"phase-3.0 working tree: presence, push notifications, draft backup, doc invite","base":null,"head":"3db533b","branch":"phase-3.0","mode":"changed"}
-{"ts":"2026-09-14T14:12:03.104Z","agent":"orchestrator","event":"stage.entered","stage":"plan"}
-{"ts":"2026-09-14T14:24:03.912Z","agent":"orchestrator","event":"cost.recorded","tokens":48647,"fresh":742,"input":2,"output":329,"cache-write":411,"cache-read":47905,"messages":1,"transcripts":1,"window":"2026-09-14T14:11:57/2026-09-14T14:12:03","source":"transcripts"}
-{"ts":"2026-09-14T14:26:35.378Z","agent":"orchestrator","event":"stage.entered","stage":"implement"}
-{"ts":"2026-09-14T14:34:40.767Z","agent":"orchestrator","event":"stage.entered","stage":"run"}
-{"ts":"2026-09-14T14:34:41.301Z","agent":"orchestrator","event":"cost.recorded","tokens":19571150,"fresh":644349,"input":442,"output":23450,"cache-write":620457,"cache-read":18926801,"messages":221,"transcripts":7,"window":"2026-09-14T14:11:57/2026-09-14T14:34:40","source":"transcripts"}
-{"ts":"2026-09-14T14:38:46.242Z","agent":"orchestrator","event":"cost.recorded","tokens":19571150,"fresh":644349,"input":442,"output":23450,"cache-write":620457,"cache-read":18926801,"messages":221,"transcripts":7,"window":"2026-09-14T14:11:57/2026-09-14T14:34:40","source":"transcripts"}
-{"ts":"2026-09-14T14:50:08.055Z","agent":"orchestrator","event":"cost.recorded","tokens":19571150,"fresh":644349,"input":442,"output":23450,"cache-write":620457,"cache-read":18926801,"messages":221,"transcripts":7,"window":"2026-09-14T14:11:57/2026-09-14T14:34:40","source":"transcripts"}
-{"ts":"2026-09-14T14:55:00.053Z","agent":"orchestrator","event":"cost.recorded","tokens":19571150,"fresh":644349,"input":442,"output":23450,"cache-write":620457,"cache-read":18926801,"messages":221,"transcripts":7,"window":"2026-09-14T14:11:57/2026-09-14T14:34:40","source":"transcripts"}

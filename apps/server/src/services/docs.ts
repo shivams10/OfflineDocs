@@ -135,37 +135,42 @@ export interface SaveResult {
 // Merges an incoming Yjs update (base64, from encodeUpdate() client-side) into the
 // doc's stored snapshot. Y.applyUpdate() is what actually validates the payload is a
 // real Yjs update — the request-body validator only checks it's a non-empty string.
+//
+// Read, merge and write happen under a row lock. Without it, two saves landing
+// together both merge into the same starting snapshot and the second write silently
+// discards the first editor's changes — whose client already believes they're saved.
 export async function saveDoc(docId: string, update: string): Promise<SaveResult> {
-  const existing = await prisma.doc.findUnique({
-    where: { id: docId },
-    select: { snapshot: true },
+  return prisma.$transaction(async (tx) => {
+    const [existing] = await tx.$queryRaw<{ snapshot: Uint8Array | null }[]>`
+      SELECT "snapshot" FROM "Doc" WHERE "id" = ${docId} FOR UPDATE
+    `;
+    if (!existing) throw AppError.notFound("Document not found");
+
+    const ydoc = new Y.Doc();
+    if (existing.snapshot) Y.applyUpdate(ydoc, existing.snapshot);
+
+    // Captured before the merge: the same Y.Doc is mutated in place, so reading this
+    // afterwards would compare the result against itself.
+    const before = ydoc.getText(BODY_FIELD).toString();
+
+    try {
+      Y.applyUpdate(ydoc, Buffer.from(update, "base64"));
+    } catch {
+      throw AppError.badRequest("Invalid document update");
+    }
+
+    const snapshot = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+    const doc = await tx.doc.update({
+      where: { id: docId },
+      data: { snapshot },
+      select: DOC_SUMMARY_FIELDS,
+    });
+
+    return {
+      doc,
+      changeSummary: describeChange(before, ydoc.getText(BODY_FIELD).toString()),
+    };
   });
-  if (!existing) throw AppError.notFound("Document not found");
-
-  const ydoc = new Y.Doc();
-  if (existing.snapshot) Y.applyUpdate(ydoc, existing.snapshot);
-
-  // Captured before the merge: the same Y.Doc is mutated in place, so reading this
-  // afterwards would compare the result against itself.
-  const before = ydoc.getText(BODY_FIELD).toString();
-
-  try {
-    Y.applyUpdate(ydoc, Buffer.from(update, "base64"));
-  } catch {
-    throw AppError.badRequest("Invalid document update");
-  }
-
-  const snapshot = Buffer.from(Y.encodeStateAsUpdate(ydoc));
-  const doc = await prisma.doc.update({
-    where: { id: docId },
-    data: { snapshot },
-    select: DOC_SUMMARY_FIELDS,
-  });
-
-  return {
-    doc,
-    changeSummary: describeChange(before, ydoc.getText(BODY_FIELD).toString()),
-  };
 }
 
 

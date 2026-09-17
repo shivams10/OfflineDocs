@@ -3,17 +3,31 @@
 import { Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PUSH_LABELS } from "@/constants/labels";
-import { usePush } from "@/lib/push/use-push";
+import { usePush, type PushState, type PushStatus } from "@/lib/push/use-push";
 
 /**
- * Opt-in control for notifications. Renders nothing at all when push cannot work
- * here — an unsupported browser or a server with no VAPID keys — rather than a
- * disabled button the user cannot do anything about.
+ * Whether there is a control to show at all. An unsupported browser or a server with
+ * no VAPID keys gets nothing, rather than a disabled button the user cannot act on.
  */
-export function PushToggle({ className }: { className?: string }) {
-  const { status, enable, disable } = usePush();
+export function canShowPushToggle(status: PushStatus): boolean {
+  return status !== "checking" && status !== "unavailable";
+}
 
-  if (status === "checking" || status === "unavailable") return null;
+/**
+ * The button alone, driven by push state the caller already holds — so a surface that
+ * wraps it in its own row (the mobile nav) can hide that row too, from the same
+ * `usePush()`, instead of mounting a second independent copy of the state.
+ */
+export function PushToggleButton({
+  push,
+  className,
+}: {
+  push: PushState;
+  className?: string;
+}) {
+  const { status, enable, disable } = push;
+
+  if (!canShowPushToggle(status)) return null;
 
   if (status === "blocked") {
     return (
@@ -47,4 +61,9 @@ export function PushToggle({ className }: { className?: string }) {
       {isOn ? <Bell aria-hidden="true" /> : <BellOff aria-hidden="true" />}
     </Button>
   );
+}
+
+/** Opt-in control for notifications. */
+export function PushToggle({ className }: { className?: string }) {
+  return <PushToggleButton push={usePush()} className={className} />;
 }

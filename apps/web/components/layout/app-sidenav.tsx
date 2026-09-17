@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { APP_SHELL_LABELS } from "@/constants/labels";
 import { ROUTES } from "@/constants/routes";
 import { MobileNavAccountRow } from "@/components/layout/mobile-nav-account-row";
+import { MobileNavPushRow } from "@/components/layout/mobile-nav-push-row";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -66,6 +67,8 @@ export function AppSidenav() {
         </div>
 
         <div className="flex-1" />
+
+        <MobileNavPushRow />
 
         <div className="flex h-12 items-center gap-2.5 rounded-md px-2.5 text-ui text-foreground-2">
           <span className="flex-1">{APP_SHELL_LABELS.theme}</span>

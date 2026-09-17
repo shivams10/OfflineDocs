@@ -17,23 +17,39 @@ import { getDocAccess } from "../middleware/require-role.js";
 import { getAuthenticatedUser } from "../middleware/auth.js";
 import { AppError } from "../lib/http-error.js";
 
-function toDocCollaboratorDto(row: DocCollaboratorRow): DocCollaboratorDto {
+/**
+ * Only an owner sees email addresses. The list endpoint is viewer+, and on a document
+ * shared between people who don't know each other, returning `email` to everyone
+ * would hand every member's address to every other member.
+ */
+function toDocCollaboratorDto(
+  row: DocCollaboratorRow,
+  includeEmail: boolean,
+): DocCollaboratorDto {
+  const {
+    userId,
+    role,
+    user: { name, email, avatarUrl },
+  } = row;
+
   return {
-    userId: row.userId,
-    name: row.user.name,
-    email: row.user.email,
-    avatarUrl: row.user.avatarUrl,
-    role: row.role,
+    userId,
+    name,
+    email: includeEmail ? email : null,
+    avatarUrl,
+    role,
   };
 }
+
 export async function list(
   req: Request,
   res: Response<CollaboratorsResponse>,
 ): Promise<void> {
-  const { docId } = getDocAccess(req);
+  const { docId, role } = getDocAccess(req);
+  const includeEmail = role === "owner";
   const rows = await listCollaborators(docId);
   res.json({
-    collaborators: rows.map(toDocCollaboratorDto),
+    collaborators: rows.map((row) => toDocCollaboratorDto(row, includeEmail)),
   });
 }
 
@@ -44,8 +60,9 @@ export async function invite(
   const { docId } = getDocAccess(req);
   const { email, role } = req.body as unknown as InviteCollaboratorRequest;
   const row = await inviteCollaborator(docId, email, role);
+  // Owner-only route, so the caller is always allowed the address.
   res.status(201).json({
-    collaborator: toDocCollaboratorDto(row),
+    collaborator: toDocCollaboratorDto(row, true),
   });
 }
 
@@ -57,7 +74,8 @@ export async function changeRoleHandler(
   const targetUserId = req.params.userId as string;
   const { role } = req.body as unknown as ChangeRoleRequest;
   const row = await changeRole(docId, targetUserId, role);
-  res.json({ collaborator: toDocCollaboratorDto(row) });
+  // Owner-only route, so the caller is always allowed the address.
+  res.json({ collaborator: toDocCollaboratorDto(row, true) });
 }
 
 export async function remove(req: Request, res: Response): Promise<void> {

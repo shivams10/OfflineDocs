@@ -77,7 +77,7 @@ describe("POST /docs/:id/save — malformed update rejected with 400 [AC-51] [AC
     return doc.snapshot ? Buffer.from(doc.snapshot) : null;
   }
 
-  const cases: { name: string; body: unknown }[] = [
+  const cases: { name: string; body: object }[] = [
     { name: "not a real Yjs update string", body: { update: "not-a-real-update" } },
     { name: "empty update string", body: { update: "" } },
     { name: "missing update field", body: {} },

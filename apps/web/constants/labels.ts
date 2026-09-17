@@ -8,18 +8,17 @@ export const LOGIN_PITCH = {
   headline: "Write together, online or offline.",
   body:
     "DocSync keeps every document editable while you are offline and merges your changes " +
-    "the moment you reconnect. One shared workspace, live presence on each document, and " +
-    "a full version history behind every save.",
+    "the moment you reconnect. One shared workspace, with live presence on each document " +
+    "and roles for everyone you share it with.",
   bodyShort:
     "DocSync keeps every document editable while you are offline and merges your changes " +
-    "the moment you reconnect. One shared workspace, live presence, and full version history.",
-  features: ["Offline editing", "Live presence", "Version history"],
+    "the moment you reconnect. One shared workspace, with live presence and roles.",
+  features: ["Offline editing", "Live presence", "Roles & sharing"],
 } as const;
 
 export const LOGIN_FORM = {
   startPrefix: "Start",
   typedWords: ["writing", "drafting", "editing", "syncing"],
-  needHelp: "Need help?",
   headline: "Welcome back to your desk",
   body:
     "Wherever you left off — a train, a flight, a dead zone — the edits you made there " +
@@ -92,6 +91,7 @@ export const APP_SHELL_LABELS = {
   openNavigation: "Open navigation",
   closeNavigation: "Close navigation",
   theme: "Theme",
+  notifications: "Notifications",
 } as const;
 
 export const DOCUMENTS_PAGE_LABELS = {
@@ -153,6 +153,8 @@ export const SHARE_PANEL_LABELS = {
   roleHint: "Editors can write and save. Viewers can only read.",
   peopleWithAccess: "People with access",
   you: "(you)",
+  /** A member with no Google display name, shown to a non-owner who can't see emails. */
+  unnamedCollaborator: "Unnamed collaborator",
   removeAccess: "Remove access",
   confirmRemoveTitle: "Remove access?",
   removeDescriptionSuffix: "will lose access to this document. This can't be undone.",

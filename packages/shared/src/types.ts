@@ -50,7 +50,8 @@ export interface DocDetail extends Doc {
 export interface DocCollaboratorDto {
   userId: string;
   name: string | null;
-  email: string;
+  /** null unless the caller is an owner of the document — everyone else sees names only. */
+  email: string | null;
   avatarUrl: string | null;
   role: CollaboratorRole;
 }

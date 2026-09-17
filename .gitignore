@@ -19,3 +19,7 @@ skills-lock.json
 apps/server/src/generated/prisma
 # Playwright storage states hold real signed tokens
 e2e/.auth/
+# Local tool output: Playwright MCP page snapshots and per-app qa-kit raw runs.
+# Machine-specific and regenerated on every run — nothing here is worth a diff.
+.playwright-mcp/
+apps/*/.qa/runs/
