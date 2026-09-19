@@ -44,10 +44,7 @@ requirements:
   # written for QA ("Status: Ready for QA") and states expected behaviour rather
   # than implementation — prefer it over the tech spec whenever they overlap.
   primary_docs:
-    - "docs/phase1-part2-prd.md"   # editor behaviour + §7 explicit out-of-scope list
-    - "docs/DocSync-PRD.md"        # product-level functional requirements
-    - "docs/techspec.md"           # architecture, §9 offline/conflict edge cases
-    - "docs/phase1-techspec.md"
+    - "docs/docsync-master-spec.md"   # editor behaviour + §7 explicit out-of-scope list
   tracker:
     kind: github        # remote: github.com/shivams10/OfflineDocs
     # No ticket-key pattern (ABC-123) in any of the 20 commits; history uses
@@ -324,6 +321,7 @@ run:
   #   auto      scored from the diff — critical-path match, migrations, churn,
   #             and historical defect density for the touched files.
   tier: auto
+  min_priority: P2
   max_scenarios:
     quick: 0
     standard: 20
@@ -345,7 +343,15 @@ run:
   # `related` costs seconds rather than tokens. `new` is the right choice when
   # you are running the suite yourself anyway, or in CI, and want the plugin to
   # confirm only its own work.
-  test_selection: new
+  execution: manual
+  test_commands:
+    # `dir` is where the command runs from. pnpm --filter changes the working
+    # directory, so paths must be relative to it — without this, vitest silently
+    # ran 7 of the 12 files it was given.
+    web:    { command: "pnpm exec vitest run", dir: "apps/web" }
+    server: { command: "pnpm exec vitest run", dir: "apps/server" }
+
+  test_selection: related
 
 
 
@@ -411,13 +417,17 @@ reporting:
 budget:
   max_tokens_per_run: 25_000_000
   max_minutes_per_run: 45
-  # How many agents may run at once. Three parallel implementers collided on a
-  # shared source file in the run above; partitioning by file is what makes
-  # parallelism safe, and this is the ceiling on it.
-  max_parallel_agents: 3
+  # How many agents may run at once. Agents are safe to parallelise because the
+  # partitioner assigns each one its own TEST file to write — they only read the
+  # source they cover. Raised 3 -> 6 after a run where two waves cost ~7 minutes
+  # of wall clock waiting for a collision that could not happen.
+  max_parallel_agents: 6
   # The two that actually bound cost, because growth is quadratic per agent.
   max_turns_per_agent: 30
-  max_scenarios_per_agent: 5
+  # 4, not 5: at ~4 turns a scenario plus 6 overhead that is ~22 turns, well
+  # clear of the ceiling. Three agents were killed at exactly 40 turns on the
+  # last run, and a mid-task kill costs a whole agent.
+  max_scenarios_per_agent: 4
   # The orchestrator is the one agent that cannot be split, and it was 23% of a
   # real run's cost across 106 turns — most of them navigation, artifact edits
   # and un-batched ledger writes. This is the budget it should keep to.

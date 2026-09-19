@@ -13,6 +13,7 @@ import {
   setOnline,
 } from "@/components/documents/doc-editor.test-utils";
 import { renameDoc, saveDoc } from "@/lib/api/documents";
+import { readPayload, readQueue } from "@/lib/offline/save-queue";
 
 vi.mock("@/lib/api/documents", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/documents")>();
@@ -141,11 +142,12 @@ describe("DocEditor — save lifecycle", () => {
     expect(decodeBodyFromUpdate(vi.mocked(saveDoc).mock.calls[1][1])).toBe("unsaved words");
   });
 
-  it("stays editable offline, disables both Save controls, and does not auto-save on reconnect [AC-21][AC-33][AC-34][AC-35][AC-36]", async () => {
+  it("stays editable offline and queues Save instead of refusing it [AC-21][AC-33][AC-34][AC-35][AC-36]", async () => {
     const user = userEvent.setup();
     vi.mocked(saveDoc).mockResolvedValue(summaryFor({ id: "x", title: "x" }));
 
-    const doc = makeDoc({ snapshot: makeSnapshot("existing") });
+    const snapshot = makeSnapshot("existing");
+    const doc = makeDoc({ snapshot });
     renderDocEditor(doc);
 
     const body = screen.getByPlaceholderText(EDITOR_LABELS.bodyPlaceholder);
@@ -156,23 +158,29 @@ describe("DocEditor — save lifecycle", () => {
 
     expect(screen.getByText(SYNC_STATE_LABELS.offline)).toBeInTheDocument();
     expect(screen.getByText(EDITOR_LABELS.offlineHint)).toBeInTheDocument();
-    for (const button of screen.getAllByRole("button", { name: EDITOR_LABELS.save })) {
-      expect(button).toBeDisabled();
-    }
     expect(body).not.toBeDisabled();
     expect(body).toHaveValue("existingab");
 
-    setOnline(true);
-    expect(saveDoc).not.toHaveBeenCalled();
-    await waitFor(() =>
-      expect(screen.getByText(SYNC_STATE_LABELS.draft)).toBeInTheDocument(),
-    );
-
+    // Phase 2 supersedes Part 1's disabled-offline button: the change is queued.
     const [saveButton] = screen.getAllByRole("button", { name: EDITOR_LABELS.save });
+    expect(saveButton).toBeEnabled();
     await user.click(saveButton);
 
-    expect(saveDoc).toHaveBeenCalledTimes(1);
-    expect(decodeBodyFromUpdate(vi.mocked(saveDoc).mock.calls[0][1])).toBe("existingab");
+    await waitFor(() => expect(screen.getByText(SYNC_STATE_LABELS.pending)).toBeInTheDocument());
+    // Queued, not sent — the network is what is missing.
+    expect(saveDoc).not.toHaveBeenCalled();
+
+    const mine = (await readQueue()).filter((entry) => entry.docId === doc.id);
+    expect(mine).toHaveLength(1);
+
+    // The payload is a delta against the last synced state, so it is only
+    // meaningful applied on top of the snapshot it was encoded against.
+    const payload = await readPayload(mine[0].id);
+    expect(decodeBodyFromUpdate(doc.snapshot!, payload!.update!)).toBe("existingab");
+
+    // Restore connectivity while still mounted: TanStack Query's onlineManager
+    // is a singleton, and leaving it offline pauses mutations in later tests.
+    setOnline(true);
   });
 });
 

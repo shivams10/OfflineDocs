@@ -41,10 +41,18 @@ export function makeSnapshot(text: string): string {
 
 /** Inverse of the payload useYjsDoc's encodeUpdate() sends to Save — decodes
  *  a captured save-call argument back to the body text it represents, so
- *  tests can assert on content instead of opaque base64. */
-export function decodeBodyFromUpdate(update: string): string {
+ *  tests can assert on content instead of opaque base64.
+ *
+ *  encodeUpdate sends a DELTA against the last synced vector, not a full state,
+ *  so a delta built on top of "existing" carries only the new characters and
+ *  applying it to an empty doc yields "". Pass the snapshot the document was
+ *  rendered with first, then the delta: that models what the server sees —
+ *  seed with what it holds, apply the delta, read the result. */
+export function decodeBodyFromUpdate(...updates: string[]): string {
   const doc = new Y.Doc();
-  Y.applyUpdate(doc, base64ToBytes(update));
+  // Applied in order: a queued payload is a delta, meaningless on its own
+  // without the snapshot it was encoded against.
+  for (const update of updates) Y.applyUpdate(doc, base64ToBytes(update));
   return doc.getText(BODY_FIELD).toString();
 }
 

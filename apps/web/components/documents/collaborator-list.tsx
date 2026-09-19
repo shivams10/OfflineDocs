@@ -44,7 +44,7 @@ export function CollaboratorList({
   onChangeRole,
   onRequestRemove,
 }: CollaboratorListProps) {
-  const { you, removeAccess } = SHARE_PANEL_LABELS;
+  const { you, removeAccess, unnamedCollaborator } = SHARE_PANEL_LABELS;
   const interactive = !!onChangeRole && !!onRequestRemove;
 
   return (
@@ -58,48 +58,50 @@ export function CollaboratorList({
 
       <ul className="space-y-1">
         {collaborators.map((collaborator) => {
-          const isSelf = collaborator.userId === currentUserId;
+          const { userId, name, email, role } = collaborator;
+          const isSelf = userId === currentUserId;
+          // `email` is null for anyone but an owner, so a member with no Google
+          // display name needs a fallback that doesn't depend on it.
+          const displayName = name ?? email ?? unnamedCollaborator;
+
           return (
-            <li
-              key={collaborator.userId}
-              className="flex items-center gap-2.5 py-1.5"
-            >
+            <li key={userId} className="flex items-center gap-2.5 py-1.5">
               <span
                 className={
-                  collaborator.role === "owner"
+                  role === "owner"
                     ? "grid size-7 shrink-0 place-items-center rounded-full bg-primary text-caption font-semibold text-primary-foreground"
                     : "grid size-7 shrink-0 place-items-center rounded-full bg-muted text-caption font-semibold text-muted-foreground"
                 }
               >
-                {(collaborator.name ?? collaborator.email)
-                  .slice(0, 2)
-                  .toUpperCase()}
+                {displayName.slice(0, 2).toUpperCase()}
               </span>
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-ui font-medium">
-                  {collaborator.name ?? collaborator.email}
+                  {displayName}
                   {isSelf ? ` ${you}` : ""}
                 </p>
-                <p className="truncate text-caption text-muted-foreground">
-                  {collaborator.email}
-                </p>
+                {email ? (
+                  <p className="truncate text-caption text-muted-foreground">
+                    {email}
+                  </p>
+                ) : null}
               </div>
 
-              {interactive && collaborator.role !== "owner" ? (
+              {interactive && role !== "owner" ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={<Button variant="outline" size="sm" />}
                   >
-                    {ASSIGNABLE_ROLE_LABEL[collaborator.role]}
+                    {ASSIGNABLE_ROLE_LABEL[role]}
                     <ChevronDown />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuRadioGroup
-                      value={collaborator.role}
+                      value={role}
                       onValueChange={(value) =>
                         onChangeRole?.(
-                          collaborator.userId,
+                          userId,
                           value as AssignableCollaboratorRole,
                         )
                       }
@@ -113,19 +115,14 @@ export function CollaboratorList({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
-                      onClick={() =>
-                        onRequestRemove?.(
-                          collaborator.userId,
-                          collaborator.name ?? collaborator.email,
-                        )
-                      }
+                      onClick={() => onRequestRemove?.(userId, displayName)}
                     >
                       {removeAccess}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <RoleChip role={collaborator.role} />
+                <RoleChip role={role} />
               )}
             </li>
           );

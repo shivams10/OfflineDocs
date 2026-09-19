@@ -5,10 +5,22 @@ import type { DocDetail } from "@docsync/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SyncBadge } from "@/components/documents/sync-badge";
-import { EDITOR_LABELS } from "@/constants/labels";
+import { PresenceChips } from "@/components/documents/presence-chips";
+import { DocSavedNotice } from "@/components/documents/doc-saved-notice";
+import { DictationControl } from "@/components/documents/dictation-panel";
+import { EDITOR_LABELS, PRESENCE_LABELS, QUEUE_LABELS } from "@/constants/labels";
+import { QUEUE_REFUSAL_MESSAGES } from "@/constants/errors";
+import { ApiError, csrfToken } from "@/lib/api/client";
 import { useDoc, useRenameDoc, useSaveDoc } from "@/lib/documents/use-documents";
 import { useYjsDoc } from "@/lib/documents/use-yjs-doc";
+import { useDraftBackup, usePresence } from "@/lib/documents/use-presence";
+import { useSession } from "@/lib/auth/use-session";
 import type { SyncState } from "@/lib/documents/sync-state";
+import { insertText, type TextSelection } from "@/lib/dictation/insert-text";
+import { requestQueueFlush } from "@/lib/offline/request-flush";
+import { enqueueSave, type EnqueueRefusal } from "@/lib/offline/save-queue";
+import { useDocQueueState, useQueueTotals } from "@/lib/offline/use-save-queue";
+import { RejectedSaveNotice } from "@/components/documents/rejected-save-notice";
 
 function subscribeToConnectivity(callback: () => void) {
   window.addEventListener("online", callback);
@@ -55,14 +67,85 @@ export function DocEditor({ id }: { id: string }) {
   return <DocEditorLoaded key={doc.id} doc={doc} />;
 }
 
+/**
+ * Shown when the heartbeat proves the caller's access is gone — the document was
+ * deleted, or they were removed from it.
+ *
+ * The local draft is deliberately left intact and the text is offered for copying
+ * rather than discarded. Someone else revoking a permission must not silently
+ * destroy work this person has not saved; that is precisely the trust failure the
+ * offline-first model exists to prevent.
+ */
+function AccessRevokedBanner({ body }: { body: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div
+      role="alert"
+      className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-destructive/20 bg-destructive-soft px-4 py-2 text-caption text-destructive sm:px-8"
+    >
+      <span className="font-medium">{PRESENCE_LABELS.accessRevokedTitle}</span>
+      <span className="min-w-0 flex-1">{PRESENCE_LABELS.accessRevokedHint}</span>
+      <button
+        type="button"
+        className="underline"
+        onClick={() => {
+          void navigator.clipboard?.writeText(body).then(
+            () => setCopied(true),
+            () => undefined,
+          );
+        }}
+      >
+        {copied ? PRESENCE_LABELS.copied : PRESENCE_LABELS.copyText}
+      </button>
+    </div>
+  );
+}
+
 function DocEditorLoaded({ doc }: { doc: DocDetail }) {
   const isViewer = doc.role === "viewer";
+  // The same cached query the parent read, for its refetch(): a flushed queued
+  // save is the one moment this page needs the server's current snapshot.
+  const { refetch: refetchDoc } = useDoc(doc.id);
   const online = useOnlineStatus();
-  const { body, setBody, isDirty, encodeUpdate, markSaved } = useYjsDoc(doc.id, doc.snapshot);
+  const {
+    body,
+    setBody,
+    isDirty,
+    encodeUpdate,
+    markSaved,
+    encodeFullState,
+    reconcileWithServer,
+  } = useYjsDoc(
+    doc.id,
+    doc.snapshot,
+  );
   const saveDoc = useSaveDoc(doc.id);
   const renameDoc = useRenameDoc();
+  const { data: me } = useSession();
+
+  // Presence and the draft backup are one request on the wire (techspec 4.1/7),
+  // but two hooks here: one writes on a timer, the other reads on a timer, and
+  // only the write half has anything to say when access disappears.
+  const { accessRevoked } = useDraftBackup(doc.id, {
+    // No point heartbeating into a void — offline, the request cannot land, and a
+    // failed beat must not be mistaken for revoked access.
+    enabled: online,
+    isDirty,
+    canBackUp: !isViewer,
+    encodeFullState,
+  });
+
+  const { data: present } = usePresence(doc.id, online && !accessRevoked);
+
+  // The list is a plain fact about the document, so the caller is filtered here
+  // rather than server-side — "who else" is a question only this screen asks.
+  const others = (present ?? []).filter((person) => person.userId !== me?.id);
 
   const [title, setTitle] = useState(doc.title);
+  const [queueRefusal, setQueueRefusal] = useState<EnqueueRefusal | null>(null);
+  const { pending: pendingCount, rejected: rejectedCount } = useDocQueueState(doc.id);
+  const totals = useQueueTotals();
 
   // Escape reverts and blurs, but `setTitle` is async while `blur()` fires
   // `onBlur` synchronously — so `commitTitle` would still close over the
@@ -83,10 +166,102 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
     renameDoc.mutate({ id: doc.id, title: trimmed });
   }
 
-  function handleSave() {
-    if (isViewer || !online || !isDirty || saveDoc.isPending) return;
-    saveDoc.mutate(encodeUpdate(), { onSuccess: () => markSaved() });
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  // The last cursor the user left in the body. Dictation inserts here, even
+  // though focus has moved into the panel by the time it does.
+  const selectionRef = useRef<TextSelection | null>(null);
+  const pendingCaretRef = useRef<number | null>(null);
+
+  function rememberSelection(textarea: HTMLTextAreaElement) {
+    selectionRef.current = { start: textarea.selectionStart, end: textarea.selectionEnd };
   }
+
+  // Dictation text goes through setBody like a keystroke, so it becomes an
+  // ordinary Yjs edit that follows the normal draft -> Save path.
+  function insertDictation(text: string) {
+    const result = insertText(body, selectionRef.current, text);
+    setBody(result.body);
+    selectionRef.current = { start: result.caret, end: result.caret };
+    pendingCaretRef.current = result.caret;
+  }
+
+  // Put the caret after the inserted text once the new body has rendered.
+  useEffect(() => {
+    const caret = pendingCaretRef.current;
+    const textarea = bodyRef.current;
+    if (caret === null || !textarea) return;
+    pendingCaretRef.current = null;
+    textarea.focus();
+    textarea.setSelectionRange(caret, caret);
+  }, [body]);
+
+  /* Offline, Save queues rather than refusing (Phase 2 supersedes Part 1's
+     disabled button). markSaved() only on a durable enqueue: the queued entry is
+     what the next delta is measured from, so losing it would lose the edit. */
+  async function queueSave(update: string) {
+    const result = await enqueueSave({ docId: doc.id, update, csrf: csrfToken() });
+
+    setQueueRefusal(result.ok ? null : result.reason);
+    if (!result.ok) return;
+
+    markSaved();
+    // Clears a failed attempt that this enqueue has now taken responsibility for,
+    // so the badge reads Pending rather than staying on Save failed.
+    saveDoc.reset();
+
+    /* Registers the Background Sync now rather than on reconnect: it is what
+       sends this change if the tab is closed before the network returns. */
+    void requestQueueFlush();
+  }
+
+  function handleSave() {
+    if (isViewer || !isDirty || saveDoc.isPending) return;
+
+    const update = encodeUpdate();
+    if (!online) {
+      void queueSave(update);
+      return;
+    }
+
+    saveDoc.mutate(update, {
+      onSuccess: () => markSaved(),
+      /* navigator.onLine reports true on a dead network, so reachability is only
+         really known once a request has failed. Anything the server answered is
+         a real error and stays one; a transport failure is queued instead. */
+      onError: (error) => {
+        if (!(error instanceof ApiError)) void queueSave(update);
+      },
+    });
+  }
+
+  /* The service worker sends queued saves, including after this page was
+     reloaded or while it sat untouched — so without this the badge would sit on
+     "Draft" over work the server already has, and pressing Save would push
+     "updated this document" to every collaborator for nothing. The refetch is
+     what supplies the server's own snapshot to re-base on; the worker drops its
+     cached copy first, so this reads the fresh one. */
+  const reconcileRef = useRef(reconcileWithServer);
+  useEffect(() => {
+    reconcileRef.current = reconcileWithServer;
+  });
+
+  useEffect(() => {
+    const worker = navigator.serviceWorker;
+    if (!worker) return;
+
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; docId?: string } | null;
+      if (data?.type !== "SAVE_FLUSHED" || data.docId !== doc.id) return;
+
+      void refetchDoc().then((result) => {
+        const snapshot = result.data?.snapshot;
+        if (snapshot) reconcileRef.current(snapshot);
+      });
+    };
+
+    worker.addEventListener("message", onMessage);
+    return () => worker.removeEventListener("message", onMessage);
+  }, [doc.id, refetchDoc]);
 
   // A ref, not a `[handleSave]` dependency: `handleSave` closes over state
   // that changes on every keystroke, and re-subscribing the listener that
@@ -109,20 +284,26 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // A prior failure outranks being offline: "Save failed" is the more
-  // actionable of the two, and losing it on a disconnect would hide that the
-  // last attempt did not land.
+  /* A prior failure outranks being offline: "Save failed" is the more actionable
+     of the two, and losing it on a disconnect would hide that the last attempt
+     did not land. Queued work outranks "Offline" for the same reason — it says
+     the change is held safely, not merely that the network is gone. */
   const syncState: SyncState = saveDoc.isPending
     ? "saving"
-    : saveDoc.isError
+    : // Refused work is unsaved work: "Saved" here would be untrue.
+      saveDoc.isError || rejectedCount > 0
       ? "error"
-      : !online
-        ? "offline"
-        : isDirty
-          ? "draft"
-          : "saved";
+      : pendingCount > 0
+        ? online
+          ? "reconnecting"
+          : "pending"
+        : !online
+          ? "offline"
+          : isDirty
+            ? "draft"
+            : "saved";
 
-  const canSave = !isViewer && online && isDirty && !saveDoc.isPending;
+  const canSave = !isViewer && isDirty && !saveDoc.isPending;
 
   return (
     <div className="flex h-full flex-col">
@@ -147,7 +328,19 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
           className="min-w-0 flex-1 truncate bg-transparent text-page-title outline-none disabled:opacity-100"
         />
 
+        <PresenceChips people={others} />
+
         <SyncBadge state={syncState} />
+
+        {pendingCount > 0 ? (
+          <span className="text-caption text-muted-foreground max-sm:hidden">
+            {pendingCount === 1 ? QUEUE_LABELS.pendingOne : QUEUE_LABELS.pendingMany(pendingCount)}
+          </span>
+        ) : null}
+
+        {isViewer ? null : (
+          <DictationControl docId={doc.id} online={online} onInsert={insertDictation} />
+        )}
 
         {isViewer ? (
           <Badge variant="neutral" size="md">
@@ -160,9 +353,43 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
         )}
       </div>
 
+      <DocSavedNotice docId={doc.id} />
+
+      {accessRevoked ? <AccessRevokedBanner body={body} /> : null}
+
       {!isViewer && !online ? (
         <p className="shrink-0 border-b border-warning/25 bg-warning-soft px-4 py-2 text-caption text-warning sm:px-8">
           {EDITOR_LABELS.offlineHint}
+        </p>
+      ) : null}
+
+      {rejectedCount > 0 ? <RejectedSaveNotice docId={doc.id} body={body} /> : null}
+
+      {queueRefusal ? (
+        <p
+          role="alert"
+          className="shrink-0 border-b border-destructive/20 bg-destructive-soft px-4 py-2 text-caption text-destructive sm:px-8"
+        >
+          {QUEUE_REFUSAL_MESSAGES[queueRefusal]}
+        </p>
+      ) : null}
+
+      {/* The browser is the threat here, not the server: past seven days it may
+          delete the queue itself, so this one names the document and the date. */}
+      {totals.stale && totals.oldestQueuedAt !== null && pendingCount > 0 ? (
+        <p
+          role="alert"
+          className="shrink-0 border-b border-destructive/20 bg-destructive-soft px-4 py-2 text-caption text-destructive sm:px-8"
+        >
+          <span className="font-medium">{QUEUE_LABELS.staleTitle}</span>{" "}
+          {QUEUE_LABELS.staleBody(
+            doc.title,
+            new Date(totals.oldestQueuedAt).toLocaleDateString(),
+          )}
+        </p>
+      ) : totals.nearBudget ? (
+        <p className="shrink-0 border-b border-warning/25 bg-warning-soft px-4 py-2 text-caption text-warning sm:px-8">
+          {QUEUE_LABELS.nearBudget}
         </p>
       ) : null}
 
@@ -176,9 +403,11 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
       ) : null}
 
       <textarea
+        ref={bodyRef}
         value={body}
         readOnly={isViewer}
         onChange={(event) => setBody(event.target.value)}
+        onSelect={(event) => rememberSelection(event.currentTarget)}
         placeholder={EDITOR_LABELS.bodyPlaceholder}
         className="flex-1 resize-none bg-transparent px-4 py-5 text-body text-foreground-2 outline-none sm:px-8"
       />

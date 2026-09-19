@@ -1,3 +1,5 @@
+import { QUEUE_LABELS } from "@/constants/labels";
+
 export const AUTH_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "You cancelled the Google sign-in. Nothing was changed.",
   provider_error: "Google rejected the sign-in request. Please try again.",
@@ -50,4 +52,53 @@ export const FALLBACK_DOC_ERROR = "Something went wrong. Please try again.";
 export function docErrorMessage(code: string | undefined): string | null {
   if (!code) return null;
   return DOC_ERROR_MESSAGES[code] ?? FALLBACK_DOC_ERROR;
+}
+
+/**
+ * Why the offline queue refused a change, in the user's words. Keyed by
+ * `EnqueueRefusal` from lib/offline/save-queue. Every one of these refuses the
+ * *new* change: queued work is never dropped to make room (§16.2).
+ */
+export const QUEUE_REFUSAL_MESSAGES = {
+  storage_unavailable: QUEUE_LABELS.queueFailed,
+  item_too_large: QUEUE_LABELS.itemTooLarge,
+  queue_full: QUEUE_LABELS.queueFull,
+  quota_exceeded: QUEUE_LABELS.quotaExceeded,
+} as const;
+
+/** Microphone problems, raised in the browser before anything is sent. */
+export const MIC_ERROR_MESSAGES = {
+  permission_denied:
+    "Microphone access is blocked. Allow it in your browser's site settings to dictate.",
+  no_microphone: "No microphone was found. Connect one and try again.",
+  unsupported: "This browser can't record audio for dictation.",
+  failed: "Couldn't start the microphone. Try again.",
+} as const;
+
+export type MicErrorCode = keyof typeof MIC_ERROR_MESSAGES;
+
+/** Codes from `POST /docs/:id/transcribe`. */
+export const TRANSCRIBE_ERROR_MESSAGES: Record<string, string> = {
+  stt_busy: "Transcription is busy right now. Try again in a moment.",
+  stt_unavailable: "Transcription is unavailable right now. Try again later.",
+  audio_too_large: "That recording is too large to transcribe.",
+  audio_too_long: "That recording is longer than a minute.",
+  audio_unreadable: "That recording couldn't be read. Try recording again.",
+  unsupported_audio_type: "This browser records audio in a format we can't transcribe.",
+  forbidden: "You no longer have permission to dictate in this document.",
+  not_found: "This document is no longer available.",
+
+  /* A recording made offline that could not be kept. Prefixed because these come
+     from the queue, not the API — see `queue_${reason}` in use-dictation. */
+  queue_item_too_large: "That recording is too large to keep on this device.",
+  queue_queue_full:
+    "This device is holding as much offline work as it can. Reconnect to sync it before recording more.",
+  queue_quota_exceeded: "This device has run out of storage, so that recording wasn't kept.",
+  queue_storage_unavailable: "Couldn't keep that recording on this device.",
+};
+
+export const FALLBACK_TRANSCRIBE_ERROR = "Couldn't transcribe that recording. Try again.";
+
+export function transcribeErrorMessage(code: string | undefined): string {
+  return (code && TRANSCRIBE_ERROR_MESSAGES[code]) || FALLBACK_TRANSCRIBE_ERROR;
 }

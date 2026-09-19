@@ -1,4 +1,5 @@
 import { ThemeToggle } from "@/components/theme-toggle";
+import { PushToggle } from "@/components/push-toggle";
 import { BrandLockup } from "@/components/brand-lockup";
 import { NewDocumentButton } from "@/components/documents/new-document-button";
 import { DocumentSearch } from "@/components/layout/document-search";
@@ -18,7 +19,8 @@ export function AppTopbar() {
 
       <NewDocumentButton className="hidden md:inline-flex" />
 
-      <div className="hidden md:block">
+      <div className="hidden items-center gap-2 md:flex">
+        <PushToggle />
         <ThemeToggle />
       </div>
 

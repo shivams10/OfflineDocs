@@ -41,9 +41,6 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           <p className="flex items-baseline gap-1.5 text-[1.1875rem]/[1.3] font-bold tracking-[-0.02em]">
             {LOGIN_FORM.startPrefix} <TypedWord />
           </p>
-          <span className="text-caption font-medium text-muted-foreground">
-            {LOGIN_FORM.needHelp}
-          </span>
         </div>
 
         <div className="flex flex-1 flex-col justify-end gap-4 lg:justify-center lg:gap-0">

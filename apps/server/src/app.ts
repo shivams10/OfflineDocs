@@ -6,6 +6,9 @@ import { prisma } from "./db/client.js";
 import { authRouter } from "./routes/auth.js";
 import { docsRouter } from "./routes/docs.js";
 import { collaboratorsRouter } from "./routes/collaborators.js";
+import { draftRouter, presenceRouter } from "./routes/presence.js";
+import { pushRouter } from "./routes/push.js";
+import { sttRouter } from "./routes/stt.js";
 import { requireCsrfToken } from "./middleware/csrf.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 
@@ -32,6 +35,10 @@ app.get("/health", async (_req, res) => {
 app.use("/auth", authRouter);
 app.use("/docs", docsRouter);
 app.use("/docs/:id/collaborators", collaboratorsRouter);
+app.use("/docs/:id/draft", draftRouter);
+app.use("/docs/:id/presence", presenceRouter);
+app.use("/docs/:id/transcribe", sttRouter);
+app.use("/push", pushRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

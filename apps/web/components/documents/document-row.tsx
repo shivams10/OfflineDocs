@@ -35,12 +35,15 @@ export function DocumentRow({
   doc,
   currentUserId,
   isDirty,
+  pendingChangeCount,
   onOpenDetails,
   onShare,
 }: {
   doc: DocSummary;
   currentUserId: string | undefined;
   isDirty: boolean;
+  /** Saves queued on this device for this document (Phase 2.2). */
+  pendingChangeCount: number;
   onOpenDetails: (id: string) => void;
   onShare: (id: string) => void;
 }) {
@@ -161,8 +164,15 @@ export function DocumentRow({
           </span>
         </div>
 
+        {/* Queued work outranks "Draft": it says the change is held safely on
+            this device, not merely that it is unsaved. */}
         <div className="hidden w-24 shrink-0 md:block">
-          <SyncBadge state={isDirty ? "draft" : "saved"} />
+          <SyncBadge state={pendingChangeCount > 0 ? "pending" : isDirty ? "draft" : "saved"} />
+          {pendingChangeCount > 0 ? (
+            <span className="mt-0.5 block text-meta text-muted-foreground">
+              {DOCUMENT_ROW_LABELS.pendingChanges(pendingChangeCount)}
+            </span>
+          ) : null}
         </div>
 
         <div className="w-8 shrink-0">

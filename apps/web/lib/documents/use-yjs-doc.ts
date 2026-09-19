@@ -22,6 +22,16 @@ export interface YjsDoc {
    *  Commits the state captured by the encodeUpdate() that produced the sent payload, so
    *  anything typed while the request was in flight stays outstanding (and still dirty). */
   markSaved: () => void;
+  /** The whole local document, with no delta bookkeeping and no side effects — for the
+   *  private draft backup, which must stand alone rather than replay against a base the
+   *  server may not have. Deliberately separate from encodeUpdate(): that one records the
+   *  state its payload covers, so calling it here would make the *next* real save a delta
+   *  against something the server never received. */
+  encodeFullState: () => string;
+  /** Re-bases on a snapshot the server has confirmed — used when a queued save is flushed
+   *  by the service worker, which this page never hears about otherwise. Anything the
+   *  server now holds stops counting as unsaved; anything typed since still does. */
+  reconcileWithServer: (snapshot: string) => void;
 }
 
 const HIGH_SURROGATE_START = 0xd800;
@@ -42,6 +52,22 @@ function isLowSurrogate(code: number): boolean {
 interface SentSave {
   vector: Uint8Array;
   editCount: number;
+}
+
+/**
+ * Does `doc` hold anything the state vector `base` does not?
+ *
+ * Compares decoded clocks rather than measuring the size of an encoded update:
+ * "an empty update is two bytes" is an encoding detail of Yjs, not a promise.
+ */
+function hasUpdatesBeyond(doc: Y.Doc, base: Uint8Array): boolean {
+  const current = Y.decodeStateVector(Y.encodeStateVector(doc));
+  const known = Y.decodeStateVector(base);
+
+  for (const [client, clock] of current) {
+    if (clock > (known.get(client) ?? 0)) return true;
+  }
+  return false;
 }
 
 /**
@@ -165,5 +191,45 @@ export function useYjsDoc(docId: string, snapshot: string | null): YjsDoc {
     if (!stillDirty) markDocClean(docId);
   }
 
-  return { body, setBody, isDirty, encodeUpdate, markSaved };
+  function encodeFullState(): string {
+    return bytesToBase64(Y.encodeStateAsUpdate(ydoc));
+  }
+
+  /**
+   * A queued save is sent by the service worker, so the page that made it never
+   * learns it landed: the badge would sit on "Draft" over work the server has.
+   * Given the snapshot the server now holds, everything in it stops counting as
+   * unsaved, and only what this device has *beyond* it stays dirty.
+   *
+   * The snapshot is applied to the local doc as well. It is a CRDT merge, so a
+   * collaborator's edits that arrived in the meantime join without overwriting
+   * anything typed here.
+   */
+  function reconcileWithServer(snapshot: string): void {
+    const serverState = base64ToBytes(snapshot);
+    const serverOnly = new Y.Doc();
+    Y.applyUpdate(serverOnly, serverState);
+    const serverVector = Y.encodeStateVector(serverOnly);
+    serverOnly.destroy();
+
+    // Applying is a no-op when the server holds nothing this device lacks.
+    Y.applyUpdate(ydoc, serverState);
+    lastSyncedVector.current = serverVector;
+
+    // Anything the server does not have yet is still outstanding.
+    const outstanding = hasUpdatesBeyond(ydoc, serverVector);
+    setIsDirty(outstanding);
+    if (outstanding) markDocDirty(docId);
+    else markDocClean(docId);
+  }
+
+  return {
+    body,
+    setBody,
+    isDirty,
+    encodeUpdate,
+    markSaved,
+    encodeFullState,
+    reconcileWithServer,
+  };
 }

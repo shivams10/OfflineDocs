@@ -149,3 +149,119 @@ describe("useYjsDoc — astral-plane characters survive an edit", () => {
     expect([...result.current.body].length).toBe(2);
   });
 });
+
+describe("useYjsDoc — reconcileWithServer after a queued save is flushed", () => {
+  /* Stable per test: the id is a hook dependency, so generating one inside the
+     render function re-runs the effect on every render and resets the synced
+     vector — which silently turns encodeUpdate() into an empty delta. */
+  let docCounter = 0;
+  const nextDocId = () => `doc-flush-${++docCounter}`;
+  /** What the server holds once a queued update has been merged into a snapshot. */
+  function serverSnapshotAfterMerging(base: string | null, ...updates: string[]): string {
+    const doc = new Y.Doc();
+    if (base) Y.applyUpdate(doc, base64ToBytes(base));
+    for (const update of updates) Y.applyUpdate(doc, base64ToBytes(update));
+    return Buffer.from(Y.encodeStateAsUpdate(doc)).toString("base64");
+  }
+
+  it("stops calling work unsaved once the server holds it [Phase 2.2]", async () => {
+    const docId = nextDocId();
+    const base = serverSnapshot("saved ");
+    const { result } = renderHook(() => useYjsDoc(docId, base));
+
+    // Typed while offline, queued, and sent later by the service worker.
+    act(() => {
+      result.current.setBody("saved offline");
+    });
+    await waitFor(() => expect(result.current.isDirty).toBe(true));
+    const queued = result.current.encodeUpdate();
+
+    const merged = serverSnapshotAfterMerging(base, queued);
+    act(() => {
+      result.current.reconcileWithServer(merged);
+    });
+
+    await waitFor(() => expect(result.current.isDirty).toBe(false));
+    expect(result.current.body).toBe("saved offline");
+  });
+
+  it("keeps anything typed after the flush outstanding", async () => {
+    const docId = nextDocId();
+    const base = serverSnapshot("saved ");
+    const { result } = renderHook(() => useYjsDoc(docId, base));
+
+    act(() => {
+      result.current.setBody("saved offline");
+    });
+    const queued = result.current.encodeUpdate();
+    const merged = serverSnapshotAfterMerging(base, queued);
+
+    // The user kept typing while the worker was sending.
+    act(() => {
+      result.current.setBody("saved offline and more");
+    });
+
+    act(() => {
+      result.current.reconcileWithServer(merged);
+    });
+
+    expect(result.current.isDirty).toBe(true);
+    expect(result.current.body).toBe("saved offline and more");
+  });
+
+  it("bases the next save on what the server now holds, not the old snapshot", async () => {
+    const docId = nextDocId();
+    const base = serverSnapshot("saved ");
+    const { result } = renderHook(() => useYjsDoc(docId, base));
+
+    act(() => {
+      result.current.setBody("saved offline");
+    });
+    const queued = result.current.encodeUpdate();
+    const merged = serverSnapshotAfterMerging(base, queued);
+
+    act(() => {
+      result.current.reconcileWithServer(merged);
+    });
+
+    // What the user types next must reconstruct on top of the server's state.
+    act(() => {
+      result.current.setBody("saved offline and more");
+    });
+    const next = result.current.encodeUpdate();
+
+    const server = new Y.Doc();
+    Y.applyUpdate(server, base64ToBytes(merged));
+    Y.applyUpdate(server, base64ToBytes(next));
+    expect(server.getText(BODY_FIELD).toString()).toBe("saved offline and more");
+  });
+
+  it("merges a collaborator's edits that arrived while the save waited", async () => {
+    const docId = nextDocId();
+    const base = serverSnapshot("shared ");
+    const { result } = renderHook(() => useYjsDoc(docId, base));
+
+    act(() => {
+      result.current.setBody("shared mine");
+    });
+    const queued = result.current.encodeUpdate();
+
+    // Someone else saved too, so the server's snapshot carries both.
+    const theirs = new Y.Doc();
+    Y.applyUpdate(theirs, base64ToBytes(base));
+    theirs.getText(BODY_FIELD).insert(0, "theirs ");
+    const merged = serverSnapshotAfterMerging(
+      base,
+      queued,
+      Buffer.from(Y.encodeStateAsUpdate(theirs)).toString("base64"),
+    );
+
+    act(() => {
+      result.current.reconcileWithServer(merged);
+    });
+
+    await waitFor(() => expect(result.current.body).toContain("mine"));
+    expect(result.current.body).toContain("theirs");
+    expect(result.current.isDirty).toBe(false);
+  });
+});

@@ -5,7 +5,7 @@ import { CollaboratorList } from "@/components/documents/collaborator-list";
 import { PanelShell } from "@/components/documents/panel-shell";
 import { RoleChip } from "@/components/documents/role-chip";
 import { SyncBadge } from "@/components/documents/sync-badge";
-import { DOC_DRAWER_LABELS } from "@/constants/labels";
+import { DOC_DRAWER_LABELS, SHARE_PANEL_LABELS } from "@/constants/labels";
 import { ROUTES } from "@/constants/routes";
 import { useCollaborators } from "@/lib/documents/use-collaborators";
 import { relativeTime } from "@/lib/documents/relative-time";
@@ -35,11 +35,16 @@ export function DocumentDetailsDrawer({
     open: openLabel,
     manageAccess,
   } = DOC_DRAWER_LABELS;
+  const { unnamedCollaborator } = SHARE_PANEL_LABELS;
 
   const router = useRouter();
   const { data } = useDocs();
   const doc = data?.find((d) => d.id === docId);
-  const collaborators = useCollaborators(docId);
+
+  // Viewers see no member list and no roles (master spec §2), so the request is not made
+  // rather than made and hidden — the endpoint answers them 403 either way.
+  const canSeeMembers = doc !== undefined && doc.role !== "viewer";
+  const collaborators = useCollaborators(canSeeMembers ? docId : null);
   const owner = collaborators.data?.find((c) => c.role === "owner");
 
   if (!doc) return null;
@@ -81,12 +86,16 @@ export function DocumentDetailsDrawer({
           {documentSection}
         </p>
         <div className="mt-2">
-          <div className="flex items-center justify-between border-b border-border py-2">
-            <span className="text-caption text-muted-foreground">
-              {ownerLabel}
-            </span>
-            <span className="text-ui">{owner?.name ?? doc.ownerId}</span>
-          </div>
+          {canSeeMembers ? (
+            <div className="flex items-center justify-between border-b border-border py-2">
+              <span className="text-caption text-muted-foreground">
+                {ownerLabel}
+              </span>
+              <span className="text-ui">
+                {owner?.name ?? owner?.email ?? unnamedCollaborator}
+              </span>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between border-b border-border py-2">
             <span className="text-caption text-muted-foreground">
               {yourRole}
@@ -112,13 +121,15 @@ export function DocumentDetailsDrawer({
         </div>
       </div>
 
-      <div className="mt-5 border-t border-border pt-5">
-        <CollaboratorList
-          label={members}
-          collaborators={collaborators.data ?? []}
-          currentUserId={currentUserId}
-        />
-      </div>
+      {canSeeMembers ? (
+        <div className="mt-5 border-t border-border pt-5">
+          <CollaboratorList
+            label={members}
+            collaborators={collaborators.data ?? []}
+            currentUserId={currentUserId}
+          />
+        </div>
+      ) : null}
     </PanelShell>
   );
 }

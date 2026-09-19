@@ -35,4 +35,20 @@ export class AppError extends Error {
   static conflict(message = "This conflicts with existing data", code = "conflict", details?: unknown) {
     return new AppError(409, code, message, details);
   }
+
+  static payloadTooLarge(message = "The request is too large", code = "payload_too_large") {
+    return new AppError(413, code, message);
+  }
+
+  static unsupportedMediaType(message = "This content type is not supported", code = "unsupported_media_type") {
+    return new AppError(415, code, message);
+  }
+
+  static unprocessable(message = "The request could not be processed", code = "unprocessable") {
+    return new AppError(422, code, message);
+  }
+
+  static serviceUnavailable(message = "This service is unavailable right now", code = "service_unavailable") {
+    return new AppError(503, code, message);
+  }
 }

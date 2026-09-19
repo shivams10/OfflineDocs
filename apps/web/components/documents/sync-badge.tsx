@@ -9,6 +9,8 @@ const SYNC_VARIANT = {
   draft: "draft",
   saving: "warning",
   saved: "success",
+  pending: "warning",
+  reconnecting: "warning",
   offline: "warning",
   error: "destructive",
 } as const;
@@ -17,6 +19,8 @@ const SYNC_DOT = {
   draft: "bg-neutral",
   saving: "bg-warning",
   saved: "bg-success",
+  pending: "bg-warning",
+  reconnecting: "bg-warning",
   offline: "bg-warning",
   error: "bg-destructive",
 } as const;
