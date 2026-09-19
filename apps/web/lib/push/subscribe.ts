@@ -5,8 +5,16 @@ import type {
 import { API } from "@/constants/routes";
 import { apiFetch, apiGet, apiPost } from "@/lib/api/client";
 
-/** Where the worker is served from. Phase 2 owns the file; the path is the contract. */
-const SERVICE_WORKER_PATH = "/sw.js";
+/**
+ * Push does not register a worker of its own.
+ *
+ * Phase 2 registers `/sw.js?v=…&api=…` from `lib/pwa/use-service-worker.ts`, and a
+ * scope holds exactly one registration — registering the bare `/sw.js` here would
+ * replace that one, and with it the query string the worker reads its API origin
+ * and cache version from. So push waits for whatever the PWA registered and
+ * subscribes against it. `sw.js` pulls in `sw-push.js`, so that worker has the
+ * push handlers.
+ */
 
 export function isPushSupported(): boolean {
   return (
@@ -34,8 +42,9 @@ function urlBase64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-export async function registerServiceWorker(): Promise<ServiceWorkerRegistration> {
-  return navigator.serviceWorker.register(SERVICE_WORKER_PATH);
+/** Resolves once the PWA's worker is active. Only ever awaited behind a click. */
+export async function activeRegistration(): Promise<ServiceWorkerRegistration> {
+  return navigator.serviceWorker.ready;
 }
 
 export async function fetchVapidPublicKey(): Promise<string | null> {
@@ -45,9 +54,9 @@ export async function fetchVapidPublicKey(): Promise<string | null> {
 
 export async function currentSubscription(): Promise<PushSubscription | null> {
   if (!isPushSupported()) return null;
-  const registration = await navigator.serviceWorker.getRegistration(
-    SERVICE_WORKER_PATH,
-  );
+  // getRegistration(), not ready: this runs on mount to decide what the toggle
+  // shows, and `ready` waits forever when no worker is registered yet.
+  const registration = await navigator.serviceWorker.getRegistration();
   return (await registration?.pushManager.getSubscription()) ?? null;
 }
 
@@ -65,9 +74,8 @@ export async function enablePush(): Promise<void> {
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new Error("permission_denied");
 
-  const registration = await registerServiceWorker();
   // The worker must be active before `pushManager.subscribe()` will resolve.
-  await navigator.serviceWorker.ready;
+  const registration = await activeRegistration();
 
   const existing = await registration.pushManager.getSubscription();
   const subscription =

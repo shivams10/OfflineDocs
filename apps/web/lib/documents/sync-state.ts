@@ -1,1 +1,1 @@
-export type SyncState = "draft" | "saving" | "saved" | "offline" | "error";
+export type SyncState = "draft" | "saving" | "saved" | "pending" | "reconnecting" | "offline" | "error";

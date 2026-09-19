@@ -171,7 +171,7 @@ export const EDITOR_LABELS = {
   saveFailed: "Couldn't save. Try again.",
   retry: "Retry",
   viewOnly: "View only",
-  offlineHint: "You're offline — reconnect to save.",
+  offlineHint: "You're offline — saves are kept on this device and sync when you reconnect.",
   loadErrorTitle: "Couldn't load this document",
 } as const;
 
@@ -223,10 +223,46 @@ export const PUSH_LABELS = {
   dismiss: "Dismiss",
 } as const;
 
+export const PWA_LABELS = {
+  updateTitle: "Update available",
+  updateBody: "A new version of DocSync is ready.",
+  updateAction: "Refresh",
+  updateDismiss: "Not now",
+} as const;
+
+export const OFFLINE_PAGE_LABELS = {
+  title: "This page isn't available offline",
+  body: "Documents you've already opened are saved on this device. Reconnect to open this one.",
+  retry: "Try again",
+  backToDocuments: "Back to documents",
+} as const;
+
 export const SYNC_STATE_LABELS = {
   draft: "Draft",
   saving: "Saving…",
   saved: "Saved",
+  pending: "Pending",
+  reconnecting: "Reconnecting…",
   offline: "Offline",
   error: "Save failed",
+} as const;
+
+/** Saves waiting to reach the server. Count is rendered beside the badge. */
+export const QUEUE_LABELS = {
+  pendingOne: "1 change waiting to sync",
+  pendingMany: (count: number) => `${count} changes waiting to sync`,
+  queueFailed: "Couldn't queue that change on this device.",
+
+  /* Access was revoked while a change waited. The work is kept and the wording
+     says so — §16.2 forbids the app discarding it. */
+  rejectedTitle: "You no longer have access to this document.",
+  rejectedBody: "Your unsaved changes are kept on this device.",
+  copyText: "Copy text",
+  copied: "Copied",
+  discard: "Discard changes",
+  confirmDiscardTitle: "Discard these changes?",
+  confirmDiscardDescription:
+    "This permanently deletes the changes that couldn't be saved. Copy the text first — this can't be undone.",
+  confirmDiscardCancel: "Keep them",
+  confirmDiscardAction: "Discard",
 } as const;

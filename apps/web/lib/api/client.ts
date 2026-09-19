@@ -36,6 +36,12 @@ function hasSessionHint(): boolean {
   return readCookie(CSRF_COOKIE) !== null;
 }
 
+/* Captured when a save is queued: the service worker sends that request later
+   and has no access to document.cookie. */
+export function csrfToken(): string | null {
+  return readCookie(CSRF_COOKIE);
+}
+
 function buildHeaders(method: string, existing?: HeadersInit): Headers {
   const headers = new Headers(existing);
   if (!SAFE_METHODS.has(method)) {

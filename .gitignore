@@ -23,3 +23,7 @@ e2e/.auth/
 # Machine-specific and regenerated on every run — nothing here is worth a diff.
 .playwright-mcp/
 apps/*/.qa/runs/
+
+# Added by code-review-graph
+.code-review-graph/
+.mcp.json

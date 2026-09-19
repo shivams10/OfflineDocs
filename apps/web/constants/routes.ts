@@ -7,6 +7,8 @@ export const ROUTES = {
   dashboard: "/dashboard",
   /** The design-system proof sheet. Temporary — see the note in its page. */
   design: "/design",
+  /** Served by the service worker when a page has no cached copy. */
+  offline: "/offline",
   doc: (id: string) => `/doc/${id}`,
 } as const;
 
