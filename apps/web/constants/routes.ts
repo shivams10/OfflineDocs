@@ -26,6 +26,8 @@ export const API = {
   /** POST = heartbeat (presence + draft backup); GET = read your own backup. */
   docDraft: (id: string) => `/docs/${id}/draft`,
   docPresence: (id: string) => `/docs/${id}/presence`,
+  /** POST multipart `audio` — one dictation chunk, transcribed. Editor+. */
+  docTranscribe: (id: string) => `/docs/${id}/transcribe`,
   pushVapidKey: "/push/vapid-public-key",
   pushSubscribe: "/push/subscribe",
 } as const;

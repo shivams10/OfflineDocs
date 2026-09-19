@@ -155,3 +155,11 @@ export interface VapidKeyResponse {
   /** null when the server has no VAPID keys configured — push is then off, not broken. */
   publicKey: string | null;
 }
+
+/* --------------------------------------------------------------- dictation */
+
+/** `POST /docs/:id/transcribe` — one recorded chunk, transcribed. Goes to the
+ *  caller's dictation panel only; nothing is written to the document. */
+export interface TranscribeResponse {
+  transcript: string;
+}

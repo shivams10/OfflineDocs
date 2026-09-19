@@ -16,6 +16,8 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),
+  // The internal faster-whisper service (apps/stt). Never exposed publicly.
+  STT_URL: z.string().url().default("http://127.0.0.1:8000"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -67,3 +69,13 @@ export const vapid =
         subject: env.VAPID_SUBJECT,
       }
     : null;
+
+/**
+ * Dictation caps, enforced here before any audio reaches the STT service. The
+ * 60-second duration cap needs the audio decoded, so apps/stt enforces that one.
+ */
+export const STT_MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+export const STT_ALLOWED_AUDIO_TYPES = ["audio/webm", "audio/ogg"] as const;
+
+/** `small` on CPU lags ~0.5–2 s behind a 60 s chunk; anything far past that is a hung service. */
+export const STT_TIMEOUT_MS = 30_000;

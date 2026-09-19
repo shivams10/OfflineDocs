@@ -30,6 +30,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jose": "^6.2.12",
+    "multer": "^2.4.0",
     "pg": "^8.23.0",
     "web-push": "^3.6.7",
     "yjs": "^13.6.32",
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
+    "@types/multer": "^2.2.0",
     "@types/node": "^24.13.4",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",

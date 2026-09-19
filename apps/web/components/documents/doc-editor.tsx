@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { SyncBadge } from "@/components/documents/sync-badge";
 import { PresenceChips } from "@/components/documents/presence-chips";
 import { DocSavedNotice } from "@/components/documents/doc-saved-notice";
+import { DictationControl } from "@/components/documents/dictation-panel";
 import { EDITOR_LABELS, PRESENCE_LABELS } from "@/constants/labels";
 import { useDoc, useRenameDoc, useSaveDoc } from "@/lib/documents/use-documents";
 import { useYjsDoc } from "@/lib/documents/use-yjs-doc";
 import { useDraftBackup, usePresence } from "@/lib/documents/use-presence";
 import { useSession } from "@/lib/auth/use-session";
 import type { SyncState } from "@/lib/documents/sync-state";
+import { insertText, type TextSelection } from "@/lib/dictation/insert-text";
 
 function subscribeToConnectivity(callback: () => void) {
   window.addEventListener("online", callback);
@@ -144,6 +146,35 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
     renameDoc.mutate({ id: doc.id, title: trimmed });
   }
 
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  // The last cursor the user left in the body. Dictation inserts here, even
+  // though focus has moved into the panel by the time it does.
+  const selectionRef = useRef<TextSelection | null>(null);
+  const pendingCaretRef = useRef<number | null>(null);
+
+  function rememberSelection(textarea: HTMLTextAreaElement) {
+    selectionRef.current = { start: textarea.selectionStart, end: textarea.selectionEnd };
+  }
+
+  // Dictation text goes through setBody like a keystroke, so it becomes an
+  // ordinary Yjs edit that follows the normal draft -> Save path.
+  function insertDictation(text: string) {
+    const result = insertText(body, selectionRef.current, text);
+    setBody(result.body);
+    selectionRef.current = { start: result.caret, end: result.caret };
+    pendingCaretRef.current = result.caret;
+  }
+
+  // Put the caret after the inserted text once the new body has rendered.
+  useEffect(() => {
+    const caret = pendingCaretRef.current;
+    const textarea = bodyRef.current;
+    if (caret === null || !textarea) return;
+    pendingCaretRef.current = null;
+    textarea.focus();
+    textarea.setSelectionRange(caret, caret);
+  }, [body]);
+
   function handleSave() {
     if (isViewer || !online || !isDirty || saveDoc.isPending) return;
     saveDoc.mutate(encodeUpdate(), { onSuccess: () => markSaved() });
@@ -212,6 +243,10 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
 
         <SyncBadge state={syncState} />
 
+        {isViewer ? null : (
+          <DictationControl docId={doc.id} online={online} onInsert={insertDictation} />
+        )}
+
         {isViewer ? (
           <Badge variant="neutral" size="md">
             {EDITOR_LABELS.viewOnly}
@@ -243,9 +278,11 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
       ) : null}
 
       <textarea
+        ref={bodyRef}
         value={body}
         readOnly={isViewer}
         onChange={(event) => setBody(event.target.value)}
+        onSelect={(event) => rememberSelection(event.currentTarget)}
         placeholder={EDITOR_LABELS.bodyPlaceholder}
         className="flex-1 resize-none bg-transparent px-4 py-5 text-body text-foreground-2 outline-none sm:px-8"
       />

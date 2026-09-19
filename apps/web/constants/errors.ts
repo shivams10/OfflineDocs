@@ -51,3 +51,32 @@ export function docErrorMessage(code: string | undefined): string | null {
   if (!code) return null;
   return DOC_ERROR_MESSAGES[code] ?? FALLBACK_DOC_ERROR;
 }
+
+/** Microphone problems, raised in the browser before anything is sent. */
+export const MIC_ERROR_MESSAGES = {
+  permission_denied:
+    "Microphone access is blocked. Allow it in your browser's site settings to dictate.",
+  no_microphone: "No microphone was found. Connect one and try again.",
+  unsupported: "This browser can't record audio for dictation.",
+  failed: "Couldn't start the microphone. Try again.",
+} as const;
+
+export type MicErrorCode = keyof typeof MIC_ERROR_MESSAGES;
+
+/** Codes from `POST /docs/:id/transcribe`. */
+export const TRANSCRIBE_ERROR_MESSAGES: Record<string, string> = {
+  stt_busy: "Transcription is busy right now. Try again in a moment.",
+  stt_unavailable: "Transcription is unavailable right now. Try again later.",
+  audio_too_large: "That recording is too large to transcribe.",
+  audio_too_long: "That recording is longer than a minute.",
+  audio_unreadable: "That recording couldn't be read. Try recording again.",
+  unsupported_audio_type: "This browser records audio in a format we can't transcribe.",
+  forbidden: "You no longer have permission to dictate in this document.",
+  not_found: "This document is no longer available.",
+};
+
+export const FALLBACK_TRANSCRIBE_ERROR = "Couldn't transcribe that recording. Try again.";
+
+export function transcribeErrorMessage(code: string | undefined): string {
+  return (code && TRANSCRIBE_ERROR_MESSAGES[code]) || FALLBACK_TRANSCRIBE_ERROR;
+}

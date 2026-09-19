@@ -186,6 +186,30 @@ export const PRESENCE_LABELS = {
   copied: "Copied",
 } as const;
 
+export const DICTATION_LABELS = {
+  open: "Dictate",
+  title: "Dictation",
+  subtitle: "Nothing is added to the document until you insert it.",
+  startRecording: "Start recording",
+  stopRecording: "Stop recording",
+  requestingMic: "Waiting for microphone…",
+  recording: "Recording",
+  /** Followed by the remaining time, e.g. "0:42 left". */
+  timeLeftSuffix: "left",
+  idleHint: "Record up to a minute at a time. Each recording is added to the transcript below.",
+  inputLevel: "Microphone input level",
+  transcribing: "Transcribing…",
+  transcriptLabel: "Transcript",
+  transcriptPlaceholder: "Your transcript appears here. Edit it before inserting.",
+  offlineHint: "You're offline — reconnect to dictate. Typing still works.",
+  retry: "Retry",
+  discard: "Discard",
+  clear: "Clear",
+  copy: "Copy",
+  copied: "Copied",
+  insert: "Insert at cursor",
+} as const;
+
 export const PUSH_LABELS = {
   enable: "Enable notifications",
   disable: "Turn off notifications",
