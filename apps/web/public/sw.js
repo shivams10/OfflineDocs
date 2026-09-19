@@ -45,19 +45,37 @@ const PRECACHE_URLS = [
 /* A page's HTML is useless offline without the hashed chunks it loads, and those
    names only exist after a build, so they cannot be listed above. Reading them
    back out of the document is what keeps a precached page able to hydrate. */
+/** A request that never settles must not be able to wedge the install. */
+const PRECACHE_TIMEOUT_MS = 10_000;
+
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`timed out: ${label}`)), ms),
+    ),
+  ]);
+}
+
 async function precacheAssetsOf(response) {
   if (!response.headers.get("Content-Type")?.includes("text/html")) return;
 
-  const paths = (await response.text()).match(/\/_next\/static\/[\w./-]+/g);
+  const paths = (await withTimeout(response.text(), PRECACHE_TIMEOUT_MS, "read html")).match(
+    /\/_next\/static\/[\w./-]+/g,
+  );
   if (!paths) return;
 
   const cache = await caches.open(STATIC_CACHE);
   await Promise.all(
-    [...new Set(paths)].map((path) =>
-      cache
-        .add(path)
-        .catch((error) => console.warn("[sw] could not precache", path, error)),
-    ),
+    [...new Set(paths)]
+      /* Hot-update files exist only for the dev server's current build and can
+         hang; they are worthless to cache either way. */
+      .filter((path) => !path.includes("/webpack/") && !path.includes("hot-update"))
+      .map((path) =>
+        withTimeout(cache.add(path), PRECACHE_TIMEOUT_MS, path).catch((error) =>
+          console.warn("[sw] could not precache", path, error),
+        ),
+      ),
   );
 }
 
@@ -75,7 +93,11 @@ self.addEventListener("install", (event) => {
         PRECACHE_URLS.map(async (url) => {
           try {
             // `cache: "reload"` so a stale HTTP-cached copy is never what we store.
-            const response = await fetch(new Request(url, { cache: "reload" }));
+            const response = await withTimeout(
+              fetch(new Request(url, { cache: "reload" })),
+              PRECACHE_TIMEOUT_MS,
+              url,
+            );
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             await shell.put(url, response.clone());

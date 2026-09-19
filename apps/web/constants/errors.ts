@@ -87,6 +87,14 @@ export const TRANSCRIBE_ERROR_MESSAGES: Record<string, string> = {
   unsupported_audio_type: "This browser records audio in a format we can't transcribe.",
   forbidden: "You no longer have permission to dictate in this document.",
   not_found: "This document is no longer available.",
+
+  /* A recording made offline that could not be kept. Prefixed because these come
+     from the queue, not the API — see `queue_${reason}` in use-dictation. */
+  queue_item_too_large: "That recording is too large to keep on this device.",
+  queue_queue_full:
+    "This device is holding as much offline work as it can. Reconnect to sync it before recording more.",
+  queue_quota_exceeded: "This device has run out of storage, so that recording wasn't kept.",
+  queue_storage_unavailable: "Couldn't keep that recording on this device.",
 };
 
 export const FALLBACK_TRANSCRIBE_ERROR = "Couldn't transcribe that recording. Try again.";
