@@ -174,15 +174,29 @@ describe("DocEditor — dictation", () => {
     expect(body).toHaveValue("abcd");
   });
 
-  it("disables recording while offline", async () => {
+  it("records offline, queues the audio, and transcribes it on reconnect [Phase 4.2]", async () => {
     const user = userEvent.setup();
     renderEditor();
+    vi.mocked(transcribeAudio).mockResolvedValueOnce("recorded while offline");
     setOnline(false);
 
-    await user.click(screen.getByRole("button", { name: DICTATION_LABELS.open }));
-
+    await openPanel(user);
     expect(screen.getByText(DICTATION_LABELS.offlineHint)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: DICTATION_LABELS.startRecording })).toBeDisabled();
+
+    // Phase 4.2 supersedes the disabled-offline button: the audio is kept.
+    await recordOnce(user);
+
+    expect(transcribeAudio).not.toHaveBeenCalled();
+    expect(await screen.findByText(DICTATION_LABELS.queuedOne)).toBeInTheDocument();
+
+    setOnline(true);
+
+    await waitFor(() => expect(transcriptBox()).toHaveValue("recorded while offline"));
+    // The raw audio goes once its transcript is in hand. The queue snapshot
+    // refreshes a tick after the delete, so this waits rather than asserting now.
+    await waitFor(() =>
+      expect(screen.queryByText(DICTATION_LABELS.queuedOne)).not.toBeInTheDocument(),
+    );
   });
 
   it("keeps a failed recording so it can be retried", async () => {

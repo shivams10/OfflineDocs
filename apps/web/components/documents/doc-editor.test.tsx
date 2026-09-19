@@ -176,7 +176,7 @@ describe("DocEditor — save lifecycle", () => {
     // The payload is a delta against the last synced state, so it is only
     // meaningful applied on top of the snapshot it was encoded against.
     const payload = await readPayload(mine[0].id);
-    expect(decodeBodyFromUpdate(doc.snapshot!, payload!.update)).toBe("existingab");
+    expect(decodeBodyFromUpdate(doc.snapshot!, payload!.update!)).toBe("existingab");
 
     // Restore connectivity while still mounted: TanStack Query's onlineManager
     // is a singleton, and leaving it offline pauses mutations in later tests.

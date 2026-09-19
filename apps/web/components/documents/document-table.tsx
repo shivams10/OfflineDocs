@@ -14,6 +14,7 @@ import { DOCUMENTS_PAGE_LABELS } from "@/constants/labels";
 import { ApiError } from "@/lib/api/client";
 import { useSession } from "@/lib/auth/use-session";
 import { useDirtyDocIds } from "@/lib/documents/use-dirty-doc-ids";
+import { usePendingByDoc } from "@/lib/offline/use-save-queue";
 import { useDocs } from "@/lib/documents/use-documents";
 
 export function DocumentTable() {
@@ -32,6 +33,8 @@ export function DocumentTable() {
   const [detailsDocId, setDetailsDocId] = useState<string | null>(null);
   const [shareDocId, setShareDocId] = useState<string | null>(null);
   const dirtyDocIds = useDirtyDocIds();
+  // One read of the queue for the whole table, not one per row.
+  const pendingByDoc = usePendingByDoc();
 
   if (isPending) {
     return (
@@ -106,6 +109,7 @@ export function DocumentTable() {
             currentUserId={session?.id}
 
             isDirty={dirtyDocIds.has(doc.id)}
+            pendingChangeCount={pendingByDoc.get(doc.id) ?? 0}
             onOpenDetails={setDetailsDocId}
             onShare={setShareDocId}
 

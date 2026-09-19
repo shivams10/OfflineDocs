@@ -280,6 +280,10 @@ async function drainQueue() {
     for (const entry of entries) {
       // Already surfaced to the user, whose decision it now is.
       if (entry.state === "rejected") continue;
+      /* Queued dictation audio. It goes to /transcribe, and its transcript has
+         to land in the panel's own store, so the page flushes those (Phase 4.2).
+         Sending one to /save would corrupt the document. */
+      if ((entry.kind ?? "save") === "audio") continue;
       if (blocked.has(entry.docId)) continue;
 
       const payload = await readPayload(db, entry.id);

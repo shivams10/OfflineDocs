@@ -1,3 +1,5 @@
+import { QUEUE_LABELS } from "@/constants/labels";
+
 export const AUTH_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "You cancelled the Google sign-in. Nothing was changed.",
   provider_error: "Google rejected the sign-in request. Please try again.",
@@ -51,6 +53,18 @@ export function docErrorMessage(code: string | undefined): string | null {
   if (!code) return null;
   return DOC_ERROR_MESSAGES[code] ?? FALLBACK_DOC_ERROR;
 }
+
+/**
+ * Why the offline queue refused a change, in the user's words. Keyed by
+ * `EnqueueRefusal` from lib/offline/save-queue. Every one of these refuses the
+ * *new* change: queued work is never dropped to make room (§16.2).
+ */
+export const QUEUE_REFUSAL_MESSAGES = {
+  storage_unavailable: QUEUE_LABELS.queueFailed,
+  item_too_large: QUEUE_LABELS.itemTooLarge,
+  queue_full: QUEUE_LABELS.queueFull,
+  quota_exceeded: QUEUE_LABELS.quotaExceeded,
+} as const;
 
 /** Microphone problems, raised in the browser before anything is sent. */
 export const MIC_ERROR_MESSAGES = {

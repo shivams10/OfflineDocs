@@ -108,6 +108,8 @@ export const DOCUMENTS_PAGE_LABELS = {
 } as const;
 
 export const DOCUMENT_ROW_LABELS = {
+  /** Saves queued on this device, shown under the row's badge. */
+  pendingChanges: (count: number) => (count === 1 ? "1 change queued" : `${count} changes queued`),
   rowActions: "Document actions",
   viewDetails: "Details",
   rename: "Rename",
@@ -201,7 +203,12 @@ export const DICTATION_LABELS = {
   transcribing: "Transcribing…",
   transcriptLabel: "Transcript",
   transcriptPlaceholder: "Your transcript appears here. Edit it before inserting.",
-  offlineHint: "You're offline — reconnect to dictate. Typing still works.",
+  offlineHint:
+    "You're offline — recordings are kept on this device and transcribed when you reconnect.",
+  /** Phase 4.2: the placeholder that stands in for a transcript until there is a network. */
+  queuedOne: "1 recording queued — it will transcribe when you're back online",
+  queuedMany: (count: number) =>
+    `${count} recordings queued — they will transcribe when you're back online`,
   retry: "Retry",
   discard: "Discard",
   clear: "Clear",
@@ -252,6 +259,21 @@ export const QUEUE_LABELS = {
   pendingOne: "1 change waiting to sync",
   pendingMany: (count: number) => `${count} changes waiting to sync`,
   queueFailed: "Couldn't queue that change on this device.",
+
+  /* Why an enqueue was refused. Nothing queued is ever dropped to make room, so
+     these all refuse the *new* change and say what to do about it (§16.2). */
+  itemTooLarge: "That change is too large to queue on this device. Reconnect to save it.",
+  queueFull:
+    "This device is holding as many offline changes as it can. Reconnect to sync them before making more.",
+  quotaExceeded:
+    "This device has run out of storage. Reconnect to sync your changes, or free up space.",
+
+  /** 80% of the budget — said once, calmly, before anything is refused. */
+  nearBudget: "This device is nearly full of unsynced changes. Reconnect soon to sync them.",
+  /** Past 7 days the browser itself may delete the queue, so this one is loud. */
+  staleTitle: "Unsynced changes are at risk",
+  staleBody: (docTitle: string, date: string) =>
+    `"${docTitle}" has had unsynced changes since ${date}. Browsers can delete them after seven days offline — reconnect, or copy the text out.`,
 
   /* Access was revoked while a change waited. The work is kept and the wording
      says so — §16.2 forbids the app discarding it. */

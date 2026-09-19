@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Copy, Mic, Square } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { PanelShell } from "@/components/documents/panel-shell";
 import { MIC_ERROR_MESSAGES, transcribeErrorMessage } from "@/constants/errors";
 import { DICTATION_LABELS } from "@/constants/labels";
 import { useDictation } from "@/lib/dictation/use-dictation";
+import { useDocQueueState } from "@/lib/offline/use-save-queue";
 import { MAX_RECORDING_MS, useRecorder } from "@/lib/dictation/use-recorder";
 
 function formatSeconds(ms: number): string {
@@ -36,11 +37,9 @@ export function DictationControl({
   const dictation = useDictation(docId);
   const recorder = useRecorder(dictation.transcribe);
   const { stop } = recorder;
-
-  // Losing the connection mid-recording would only produce audio we can't send.
-  useEffect(() => {
-    if (!online) stop();
-  }, [online, stop]);
+  // Recordings made offline are queued, so losing the connection mid-recording
+  // no longer costs the user their audio (Phase 4.2).
+  const { audio: queuedAudioCount } = useDocQueueState(docId);
 
   function handleOpenChange(next: boolean) {
     if (next) return;
@@ -70,6 +69,7 @@ export function DictationControl({
           dictation={dictation}
           recorder={recorder}
           online={online}
+          queuedAudioCount={queuedAudioCount}
           onInsert={handleInsert}
           onOpenChange={handleOpenChange}
         />
@@ -82,12 +82,15 @@ function DictationPanel({
   dictation,
   recorder,
   online,
+  queuedAudioCount,
   onInsert,
   onOpenChange,
 }: {
   dictation: ReturnType<typeof useDictation>;
   recorder: ReturnType<typeof useRecorder>;
   online: boolean;
+  /** Recordings waiting for a network, standing in for their transcripts. */
+  queuedAudioCount: number;
   onInsert: (text: string) => void;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -178,7 +181,7 @@ function DictationPanel({
               <Button
                 size="lg"
                 onClick={() => void start()}
-                disabled={!online || !loaded || status === "requesting"}
+                disabled={!loaded || status === "requesting"}
               >
                 <Mic data-icon="inline-start" />
                 {status === "requesting" ? requestingMic : startRecording}
@@ -219,6 +222,19 @@ function DictationPanel({
           <p role="status" className="flex items-center gap-2 text-caption text-muted-foreground">
             <Spinner aria-hidden="true" />
             {transcribing}
+          </p>
+        ) : null}
+
+        {/* Stands in for the transcripts until there is a network to send them
+            over. The audio itself is kept — never discarded (Phase 4.2). */}
+        {queuedAudioCount > 0 ? (
+          <p
+            role="status"
+            className="rounded-lg border border-dashed border-border px-3 py-2 text-caption text-muted-foreground"
+          >
+            {queuedAudioCount === 1
+              ? DICTATION_LABELS.queuedOne
+              : DICTATION_LABELS.queuedMany(queuedAudioCount)}
           </p>
         ) : null}
 

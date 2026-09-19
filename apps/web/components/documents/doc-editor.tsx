@@ -9,6 +9,7 @@ import { PresenceChips } from "@/components/documents/presence-chips";
 import { DocSavedNotice } from "@/components/documents/doc-saved-notice";
 import { DictationControl } from "@/components/documents/dictation-panel";
 import { EDITOR_LABELS, PRESENCE_LABELS, QUEUE_LABELS } from "@/constants/labels";
+import { QUEUE_REFUSAL_MESSAGES } from "@/constants/errors";
 import { ApiError, csrfToken } from "@/lib/api/client";
 import { useDoc, useRenameDoc, useSaveDoc } from "@/lib/documents/use-documents";
 import { useYjsDoc } from "@/lib/documents/use-yjs-doc";
@@ -17,8 +18,8 @@ import { useSession } from "@/lib/auth/use-session";
 import type { SyncState } from "@/lib/documents/sync-state";
 import { insertText, type TextSelection } from "@/lib/dictation/insert-text";
 import { requestQueueFlush } from "@/lib/offline/request-flush";
-import { enqueueSave } from "@/lib/offline/save-queue";
-import { useDocQueueState } from "@/lib/offline/use-save-queue";
+import { enqueueSave, type EnqueueRefusal } from "@/lib/offline/save-queue";
+import { useDocQueueState, useQueueTotals } from "@/lib/offline/use-save-queue";
 import { RejectedSaveNotice } from "@/components/documents/rejected-save-notice";
 
 function subscribeToConnectivity(callback: () => void) {
@@ -131,8 +132,9 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
   const others = (present ?? []).filter((person) => person.userId !== me?.id);
 
   const [title, setTitle] = useState(doc.title);
-  const [queueFailed, setQueueFailed] = useState(false);
+  const [queueRefusal, setQueueRefusal] = useState<EnqueueRefusal | null>(null);
   const { pending: pendingCount, rejected: rejectedCount } = useDocQueueState(doc.id);
+  const totals = useQueueTotals();
 
   // Escape reverts and blurs, but `setTitle` is async while `blur()` fires
   // `onBlur` synchronously — so `commitTitle` would still close over the
@@ -188,7 +190,7 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
   async function queueSave(update: string) {
     const result = await enqueueSave({ docId: doc.id, update, csrf: csrfToken() });
 
-    setQueueFailed(!result.ok);
+    setQueueRefusal(result.ok ? null : result.reason);
     if (!result.ok) return;
 
     markSaved();
@@ -323,12 +325,31 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
 
       {rejectedCount > 0 ? <RejectedSaveNotice docId={doc.id} body={body} /> : null}
 
-      {queueFailed ? (
+      {queueRefusal ? (
         <p
           role="alert"
           className="shrink-0 border-b border-destructive/20 bg-destructive-soft px-4 py-2 text-caption text-destructive sm:px-8"
         >
-          {QUEUE_LABELS.queueFailed}
+          {QUEUE_REFUSAL_MESSAGES[queueRefusal]}
+        </p>
+      ) : null}
+
+      {/* The browser is the threat here, not the server: past seven days it may
+          delete the queue itself, so this one names the document and the date. */}
+      {totals.stale && totals.oldestQueuedAt !== null && pendingCount > 0 ? (
+        <p
+          role="alert"
+          className="shrink-0 border-b border-destructive/20 bg-destructive-soft px-4 py-2 text-caption text-destructive sm:px-8"
+        >
+          <span className="font-medium">{QUEUE_LABELS.staleTitle}</span>{" "}
+          {QUEUE_LABELS.staleBody(
+            doc.title,
+            new Date(totals.oldestQueuedAt).toLocaleDateString(),
+          )}
+        </p>
+      ) : totals.nearBudget ? (
+        <p className="shrink-0 border-b border-warning/25 bg-warning-soft px-4 py-2 text-caption text-warning sm:px-8">
+          {QUEUE_LABELS.nearBudget}
         </p>
       ) : null}
 
