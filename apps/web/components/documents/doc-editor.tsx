@@ -104,8 +104,19 @@ function AccessRevokedBanner({ body }: { body: string }) {
 
 function DocEditorLoaded({ doc }: { doc: DocDetail }) {
   const isViewer = doc.role === "viewer";
+  // The same cached query the parent read, for its refetch(): a flushed queued
+  // save is the one moment this page needs the server's current snapshot.
+  const { refetch: refetchDoc } = useDoc(doc.id);
   const online = useOnlineStatus();
-  const { body, setBody, isDirty, encodeUpdate, markSaved, encodeFullState } = useYjsDoc(
+  const {
+    body,
+    setBody,
+    isDirty,
+    encodeUpdate,
+    markSaved,
+    encodeFullState,
+    reconcileWithServer,
+  } = useYjsDoc(
     doc.id,
     doc.snapshot,
   );
@@ -222,6 +233,35 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
       },
     });
   }
+
+  /* The service worker sends queued saves, including after this page was
+     reloaded or while it sat untouched — so without this the badge would sit on
+     "Draft" over work the server already has, and pressing Save would push
+     "updated this document" to every collaborator for nothing. The refetch is
+     what supplies the server's own snapshot to re-base on; the worker drops its
+     cached copy first, so this reads the fresh one. */
+  const reconcileRef = useRef(reconcileWithServer);
+  useEffect(() => {
+    reconcileRef.current = reconcileWithServer;
+  });
+
+  useEffect(() => {
+    const worker = navigator.serviceWorker;
+    if (!worker) return;
+
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; docId?: string } | null;
+      if (data?.type !== "SAVE_FLUSHED" || data.docId !== doc.id) return;
+
+      void refetchDoc().then((result) => {
+        const snapshot = result.data?.snapshot;
+        if (snapshot) reconcileRef.current(snapshot);
+      });
+    };
+
+    worker.addEventListener("message", onMessage);
+    return () => worker.removeEventListener("message", onMessage);
+  }, [doc.id, refetchDoc]);
 
   // A ref, not a `[handleSave]` dependency: `handleSave` closes over state
   // that changes on every keystroke, and re-subscribing the listener that

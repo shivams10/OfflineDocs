@@ -187,6 +187,16 @@ function deleteEntry(db, id) {
   });
 }
 
+/** Forgets the cached `GET /docs/:id` for one document, if there is one. */
+async function dropCachedDoc(docId) {
+  try {
+    const cache = await caches.open(DOCS_CACHE);
+    await cache.delete(`${API_ORIGIN}/docs/${docId}`);
+  } catch (error) {
+    console.warn("[sw] could not drop cached doc", docId, error);
+  }
+}
+
 async function notifyClients(message) {
   const clients = await self.clients.matchAll({ includeUncontrolled: true, type: "window" });
   for (const client of clients) client.postMessage(message);
@@ -340,6 +350,11 @@ async function drainQueue() {
       }
 
       await deleteEntry(db, entry.id);
+      /* The cached copy of this document predates the change we just sent, and
+         it is served stale-while-revalidate — so a reload would seed the editor
+         from a version older than the server's and call saved work a draft.
+         Drop it and let the next read come from the network. */
+      await dropCachedDoc(entry.docId);
       await notifyClients({ type: "SAVE_FLUSHED", docId: entry.docId });
     }
   } finally {
