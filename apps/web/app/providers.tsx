@@ -10,6 +10,15 @@ function makeQueryClient() {
       queries: {
         refetchOnWindowFocus: false,
         staleTime: 30_000,
+        /* Default "online" pauses every query while the browser reports offline,
+           which in this app means nothing is even asked for: the session query
+           never runs, so its remembered-identity fallback never fires and the
+           app sits on "Checking your session…" forever. Offline reads are the
+           product (§1.2) — the service worker answers them from cache, and a
+           query that truly cannot be served fails fast and shows its own error.
+           navigator.onLine reports an interface, not reachability, so it was
+           never the right thing to gate on. */
+        networkMode: "offlineFirst",
       },
     },
   });

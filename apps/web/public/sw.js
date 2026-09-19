@@ -124,9 +124,29 @@ self.addEventListener("activate", (event) => {
          controls nothing until the next navigation, so it sees no requests and
          caches nothing. */
       await self.clients.claim();
+
+      /* Claiming is too late for the fetches that page already made: the
+         document list was requested before this worker existed, so it is not in
+         the cache and a user who installs and immediately goes offline gets an
+         empty dashboard. Fetch it once, now, so the first visit is enough. */
+      await warmDocList();
     })(),
   );
 });
+
+/** Caches `GET /docs` so the dashboard has something to render offline. */
+async function warmDocList() {
+  if (API_ORIGIN === "") return;
+
+  try {
+    const request = new Request(`${API_ORIGIN}/docs`, { credentials: "include" });
+    const response = await fetch(request);
+    if (response.ok) await (await caches.open(DOCS_CACHE)).put(request, response);
+  } catch (error) {
+    // Offline at activation, or signed out. The next online load caches it.
+    console.warn("[sw] could not warm the document list", error);
+  }
+}
 
 /* ------------------------------------------------------------ save queue -- */
 
