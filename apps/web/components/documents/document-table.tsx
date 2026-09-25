@@ -80,6 +80,7 @@ export function DocumentTable() {
   }
 
   const docs = view === "shared" ? data.filter(isSharedWithMe) : data;
+  const shareDoc = data.find((d) => d.id === shareDocId);
 
   if (docs.length === 0) {
     return view === "shared" ? (
@@ -134,11 +135,13 @@ export function DocumentTable() {
         onManageAccess={setShareDocId}
       />
 
-      <SharePanel
-        docId={shareDocId}
-        currentUserId={session?.id}
-        onClose={() => setShareDocId(null)}
-      />
+      {shareDoc ? (
+        <SharePanel
+          doc={shareDoc}
+          currentUserId={session?.id}
+          onClose={() => setShareDocId(null)}
+        />
+      ) : null}
     </div>
   );
 }

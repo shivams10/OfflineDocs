@@ -177,6 +177,7 @@ export const EDITOR_LABELS = {
   saveFailed: "Couldn't save. Try again.",
   retry: "Retry",
   viewOnly: "View only",
+  share: "Share",
   offlineHint: "You're offline — saves are kept on this device and sync when you reconnect.",
   loadErrorTitle: "Couldn't load this document",
 } as const;

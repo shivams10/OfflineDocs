@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import type { AssignableCollaboratorRole } from "@docsync/shared";
+import type { AssignableCollaboratorRole, Doc } from "@docsync/shared";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DialogClose } from "@/components/ui/dialog";
@@ -19,7 +19,6 @@ import { PanelShell } from "@/components/documents/panel-shell";
 import { docErrorMessage, FALLBACK_DOC_ERROR } from "@/constants/errors";
 import { SHARE_PANEL_LABELS } from "@/constants/labels";
 import { ApiError } from "@/lib/api/client";
-import { useDocs } from "@/lib/documents/use-documents";
 import {
   useChangeCollaboratorRole,
   useCollaborators,
@@ -35,11 +34,12 @@ function mutationErrorMessage(error: unknown): string | null {
 }
 
 export function SharePanel({
-  docId,
+  doc,
   currentUserId,
   onClose,
 }: {
-  docId: string | null;
+  /** Mount only while open — closing unmounts it, which also discards a half-typed invite. */
+  doc: Pick<Doc, "id" | "title">;
   currentUserId: string | undefined;
   onClose: () => void;
 }) {
@@ -60,13 +60,10 @@ export function SharePanel({
     done,
   } = SHARE_PANEL_LABELS;
 
-  const { data: docs } = useDocs();
-  const doc = docs?.find((d) => d.id === docId);
-
-  const collaborators = useCollaborators(docId);
-  const invite = useInviteCollaborator(docId ?? "");
-  const changeRole = useChangeCollaboratorRole(docId ?? "");
-  const remove = useRemoveCollaborator(docId ?? "");
+  const collaborators = useCollaborators(doc.id);
+  const invite = useInviteCollaborator(doc.id);
+  const changeRole = useChangeCollaboratorRole(doc.id);
+  const remove = useRemoveCollaborator(doc.id);
 
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] =
@@ -77,10 +74,7 @@ export function SharePanel({
   } | null>(null);
 
   function handleOpenChange(next: boolean) {
-    if (next) return;
-    setEmail("");
-    invite.reset();
-    onClose();
+    if (!next) onClose();
   }
 
   function sendInvite() {
@@ -91,8 +85,6 @@ export function SharePanel({
       { onSuccess: () => setEmail("") },
     );
   }
-
-  if (!doc) return null;
 
   return (
     <>

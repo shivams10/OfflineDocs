@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DocDetail } from "@docsync/shared";
+import { Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SyncBadge } from "@/components/documents/sync-badge";
 import { PresenceChips } from "@/components/documents/presence-chips";
 import { DocSavedNotice } from "@/components/documents/doc-saved-notice";
 import { DictationControl } from "@/components/documents/dictation-panel";
+import { SharePanel } from "@/components/documents/share-panel";
 import { EDITOR_LABELS, PRESENCE_LABELS, QUEUE_LABELS } from "@/constants/labels";
 import { QUEUE_REFUSAL_MESSAGES } from "@/constants/errors";
 import { ApiError, csrfToken } from "@/lib/api/client";
@@ -104,6 +106,8 @@ function AccessRevokedBanner({ body }: { body: string }) {
 
 function DocEditorLoaded({ doc }: { doc: DocDetail }) {
   const isViewer = doc.role === "viewer";
+  const isOwner = doc.role === "owner";
+  const [shareOpen, setShareOpen] = useState(false);
   // The same cached query the parent read, for its refetch(): a flushed queued
   // save is the one moment this page needs the server's current snapshot.
   const { refetch: refetchDoc } = useDoc(doc.id);
@@ -342,6 +346,18 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
           <DictationControl docId={doc.id} online={online} onInsert={insertDictation} />
         )}
 
+        {/* Owner-only, removed rather than disabled for everyone else (design 5b). */}
+        {isOwner ? (
+          <Button
+            variant="outline"
+            aria-label={EDITOR_LABELS.share}
+            onClick={() => setShareOpen(true)}
+          >
+            <Share2 data-icon="inline-start" />
+            <span className="max-md:hidden">{EDITOR_LABELS.share}</span>
+          </Button>
+        ) : null}
+
         {isViewer ? (
           <Badge variant="neutral" size="md">
             {EDITOR_LABELS.viewOnly}
@@ -419,6 +435,10 @@ function DocEditorLoaded({ doc }: { doc: DocDetail }) {
           </Button>
         </div>
       )}
+
+      {shareOpen ? (
+        <SharePanel doc={doc} currentUserId={me?.id} onClose={() => setShareOpen(false)} />
+      ) : null}
     </div>
   );
 }
