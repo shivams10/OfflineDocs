@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DocDetail } from "@docsync/shared";
 import { Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -22,31 +22,8 @@ import { insertText, type TextSelection } from "@/lib/dictation/insert-text";
 import { requestQueueFlush } from "@/lib/offline/request-flush";
 import { enqueueSave, type EnqueueRefusal } from "@/lib/offline/save-queue";
 import { useDocQueueState, useQueueTotals } from "@/lib/offline/use-save-queue";
+import { useOnlineStatus } from "@/lib/offline/use-online-status";
 import { RejectedSaveNotice } from "@/components/documents/rejected-save-notice";
-
-function subscribeToConnectivity(callback: () => void) {
-  window.addEventListener("online", callback);
-  window.addEventListener("offline", callback);
-  return () => {
-    window.removeEventListener("online", callback);
-    window.removeEventListener("offline", callback);
-  };
-}
-
-function getOnlineSnapshot() {
-  return navigator.onLine;
-}
-
-// Assume online during SSR/hydration's first pass — there's no real network
-// signal on the server, and guessing "online" avoids flashing the offline
-// banner for every visitor before the client snapshot corrects it.
-function getServerOnlineSnapshot() {
-  return true;
-}
-
-function useOnlineStatus(): boolean {
-  return useSyncExternalStore(subscribeToConnectivity, getOnlineSnapshot, getServerOnlineSnapshot);
-}
 
 export function DocEditor({ id }: { id: string }) {
   const { data: doc, isPending, isError, refetch } = useDoc(id);

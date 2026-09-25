@@ -167,6 +167,8 @@ export const SHARE_PANEL_LABELS = {
   removing: "Removing…",
   cancel: "Cancel",
   inviteErrorFallback: "Something went wrong sending that invite.",
+  offlineNotice: "Sharing needs a connection. Changes to access can't be made offline.",
+  membersOffline: "The member list loads when you're back online.",
 } as const;
 
 export const EDITOR_LABELS = {

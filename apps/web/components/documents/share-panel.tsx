@@ -25,6 +25,7 @@ import {
   useInviteCollaborator,
   useRemoveCollaborator,
 } from "@/lib/documents/use-collaborators";
+import { useOnlineStatus } from "@/lib/offline/use-online-status";
 
 function mutationErrorMessage(error: unknown): string | null {
   if (!error) return null;
@@ -58,12 +59,20 @@ export function SharePanel({
     removing: removingLabel,
     cancel,
     done,
+    offlineNotice,
+    membersOffline,
   } = SHARE_PANEL_LABELS;
 
   const collaborators = useCollaborators(doc.id);
   const invite = useInviteCollaborator(doc.id);
   const changeRole = useChangeCollaboratorRole(doc.id);
   const remove = useRemoveCollaborator(doc.id);
+
+  // Access changes aren't queued offline. A transport failure counts too:
+  // navigator.onLine stays true on a network that can't reach the API.
+  const online = useOnlineStatus();
+  const unreachable =
+    !online || (collaborators.isError && !(collaborators.error instanceof ApiError));
 
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] =
@@ -98,6 +107,15 @@ export function SharePanel({
           </DialogClose>
         }
       >
+        {unreachable ? (
+          <p
+            role="status"
+            className="mb-5 rounded-md border border-warning/25 bg-warning-soft px-3 py-2 text-caption text-warning"
+          >
+            {offlineNotice}
+          </p>
+        ) : null}
+
         <div>
           <p className="text-label uppercase text-muted-foreground">
             {invitePeople}
@@ -108,7 +126,7 @@ export function SharePanel({
               type="email"
               value={email}
               placeholder={emailPlaceholder}
-              disabled={invite.isPending}
+              disabled={invite.isPending || unreachable}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -126,7 +144,7 @@ export function SharePanel({
                     variant="outline"
                     size="sm"
                     className="flex-1 justify-between md:flex-none"
-                    disabled={invite.isPending}
+                    disabled={invite.isPending || unreachable}
                   />
                 }
               >
@@ -151,7 +169,7 @@ export function SharePanel({
 
             <Button
               className="shrink-0 md:w-full"
-              disabled={invite.isPending || !email.trim()}
+              disabled={invite.isPending || unreachable || !email.trim()}
               onClick={sendInvite}
             >
               {invite.isPending ? (
@@ -176,13 +194,18 @@ export function SharePanel({
           ) : null}
         </div>
         <div className="mt-5 border-t border-border pt-5">
-          <CollaboratorList
-            label={peopleWithAccess}
-            collaborators={collaborators.data ?? []}
-            currentUserId={currentUserId}
-            onChangeRole={(userId, role) => changeRole.mutate({ userId, role })}
-            onRequestRemove={(userId, name) => setRemoving({ userId, name })}
-          />
+          {unreachable && !collaborators.data ? (
+            <p className="text-caption text-muted-foreground">{membersOffline}</p>
+          ) : (
+            <CollaboratorList
+              label={peopleWithAccess}
+              collaborators={collaborators.data ?? []}
+              currentUserId={currentUserId}
+              disabled={unreachable}
+              onChangeRole={(userId, role) => changeRole.mutate({ userId, role })}
+              onRequestRemove={(userId, name) => setRemoving({ userId, name })}
+            />
+          )}
         </div>
       </PanelShell>
 
