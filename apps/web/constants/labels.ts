@@ -105,6 +105,10 @@ export const DOCUMENTS_PAGE_LABELS = {
   emptyTitle: "Create your first document",
   emptyBody:
     "Write, edit offline, and save when you're ready. Share it with your team as an editor or viewer at any time.",
+  sharedTitle: "Shared with me",
+  sharedEmptyTitle: "Nothing shared with you yet",
+  sharedEmptyBody:
+    "Documents someone invites you to as an editor or viewer show up here.",
 } as const;
 
 export const DOCUMENT_ROW_LABELS = {
